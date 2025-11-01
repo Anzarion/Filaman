@@ -137,7 +137,10 @@
                     </div>
                 </div>
                 <p id="nfcInfo" class="nfc-status"></p>
-                <button id="writeNfcButton" class="btn btn-primary hidden" onclick="writeNfcTag()">Write Tag</button>
+                <div style="display: flex; gap: 1rem;">
+                    <button id="writeNfcButton" class="btn btn-primary hidden" onclick="writeNfcTag()">Write Tag (JSON)</button>
+                    <button id="writeNfcButtonBinary" class="btn btn-success hidden" onclick="writeNfcTagBinary()">Write Tag (ACE Pro)</button>
+                </div>
             </div>
 
             <div class="feature-box">

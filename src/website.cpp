@@ -5,6 +5,7 @@
 #include <ESPAsyncWebServer.h>
 #include "bambu.h"
 #include "nfc.h"
+#include "nfc_acepro.h"
 #include "scale.h"
 #include "esp_task_wdt.h"
 #include <Update.h>
@@ -75,6 +76,17 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
                 serializeJson(doc["payload"], payloadString);
 
                 startWriteJsonToTag((doc["tagType"] == "spool") ? true : false, payloadString.c_str());
+            }
+        }
+
+        else if (doc["type"] == "writeNfcTagBinary") {
+            // ACE Pro binary format write
+            if (doc["spoolId"].is<int>()) {
+                String spoolId = String(doc["spoolId"].as<int>());
+                Serial.printf("[WebSocket] Initiating ACE Pro binary write for spool ID: %s\n", spoolId.c_str());
+                startWriteNfcTagBinary(spoolId.c_str());
+            } else {
+                Serial.println("[WebSocket] Invalid spoolId for writeNfcTagBinary");
             }
         }
 

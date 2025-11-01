@@ -42,67 +42,129 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
     HTTPClient http;
     String spoolsUrl = spoolmanUrl + apiUrl + "/spool/" + spoolId;
 
-    Serial.print("Rufe Spool-Daten von: ");
+    Serial.print("[API] Fetching spool data from: ");
     Serial.println(spoolsUrl);
 
     http.begin(spoolsUrl);
     int httpCode = http.GET();
+    
+    Serial.printf("[API] HTTP Response Code: %d\n", httpCode);
 
     JsonDocument filteredDoc;
     if (httpCode == HTTP_CODE_OK) {
         String payload = http.getString();
+        Serial.printf("[API] Response payload size: %d bytes\n", payload.length());
+        
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, payload);
         if (error) {
-            Serial.print("Fehler beim Parsen der JSON-Antwort: ");
+            Serial.print("[API] JSON parsing error: ");
             Serial.println(error.c_str());
-        } else {
-            String filamentType = doc["filament"]["material"].as<String>();
-            String filamentBrand = doc["filament"]["vendor"]["name"].as<String>();
-
-            int nozzle_temp_min = 0;
-            int nozzle_temp_max = 0;
-            if (doc["filament"]["extra"]["nozzle_temperature"].is<String>()) {
-                String tempString = doc["filament"]["extra"]["nozzle_temperature"].as<String>();
-                tempString.replace("[", "");
-                tempString.replace("]", "");
-                int commaIndex = tempString.indexOf(',');
-                
-                if (commaIndex != -1) {
-                    nozzle_temp_min = tempString.substring(0, commaIndex).toInt();
-                    nozzle_temp_max = tempString.substring(commaIndex + 1).toInt();
-                }
-            } 
-
-            String filamentColor = doc["filament"]["color_hex"].as<String>();
-            filamentColor.toUpperCase();
-
-            String tray_info_idx = doc["filament"]["extra"]["bambu_idx"].as<String>();
-            tray_info_idx.replace("\"", "");
-            
-            String cali_idx = doc["filament"]["extra"]["bambu_cali_id"].as<String>(); // "\"153\""
-            cali_idx.replace("\"", "");
-            
-            String bambu_setting_id = doc["filament"]["extra"]["bambu_setting_id"].as<String>(); // "\"PFUSf40e9953b40d3d\""
-            bambu_setting_id.replace("\"", "");
-
-            doc.clear();
-
-            filteredDoc["color"] = filamentColor;
-            filteredDoc["type"] = filamentType;
-            filteredDoc["nozzle_temp_min"] = nozzle_temp_min;
-            filteredDoc["nozzle_temp_max"] = nozzle_temp_max;
-            filteredDoc["brand"] = filamentBrand;
-            filteredDoc["tray_info_idx"] = tray_info_idx;
-            filteredDoc["cali_idx"] = cali_idx;
-            filteredDoc["bambu_setting_id"] = bambu_setting_id;
+            Serial.print("[API] Response body (first 200 chars): ");
+            Serial.println(payload.substring(0, 200));
+            return filteredDoc;  // Return empty doc
         }
+        
+        Serial.println("[API] JSON parsing successful");
+        
+        // ===== EXTRACT ALL FIELDS FOR ACE PRO MAPPING =====
+        
+        // Spool ID (CRITICAL for validation!)
+        int spoolIdFromResponse = doc["id"].as<int>();
+        Serial.printf("[API] Extracted spool ID: %d\n", spoolIdFromResponse);
+        filteredDoc["id"] = spoolIdFromResponse;
+        
+        // ===== FILAMENT BASIC INFO =====
+        // Material type
+        String material = doc["filament"]["material"].as<String>();
+        Serial.printf("[API] Extracted material: %s\n", material.c_str());
+        filteredDoc["filament"]["material"] = material;
+        
+        // Brand/Vendor name
+        String brand = doc["filament"]["vendor"]["name"].as<String>();
+        Serial.printf("[API] Extracted vendor/brand: %s\n", brand.c_str());
+        filteredDoc["filament"]["vendor"]["name"] = brand;
+        
+        // Color (hex)
+        String colorHex = doc["filament"]["color_hex"].as<String>();
+        colorHex.toUpperCase();
+        Serial.printf("[API] Extracted color: %s\n", colorHex.c_str());
+        filteredDoc["filament"]["color_hex"] = colorHex;
+        
+        // ===== TEMPERATURE SETTINGS =====
+        // Nozzle temperatures
+        int nozzleTempMin = doc["filament"]["nozzle_temp_min"] | 200;
+        int nozzleTempMax = doc["filament"]["nozzle_temp_max"] | 230;
+        Serial.printf("[API] Extracted nozzle temps: %d-%d°C\n", nozzleTempMin, nozzleTempMax);
+        filteredDoc["filament"]["nozzle_temp_min"] = nozzleTempMin;
+        filteredDoc["filament"]["nozzle_temp_max"] = nozzleTempMax;
+        
+        // Bed temperatures (optional)
+        if (doc["filament"]["bed_temp_min"].is<int>()) {
+            int bedTempMin = doc["filament"]["bed_temp_min"];
+            int bedTempMax = doc["filament"]["bed_temp_max"];
+            Serial.printf("[API] Extracted bed temps: %d-%d°C\n", bedTempMin, bedTempMax);
+            filteredDoc["filament"]["bed_temp_min"] = bedTempMin;
+            filteredDoc["filament"]["bed_temp_max"] = bedTempMax;
+        } else {
+            Serial.println("[API] No bed temps in Spoolman, will use defaults");
+        }
+        
+        // ===== FILAMENT PHYSICAL PROPERTIES =====
+        // Diameter (in mm)
+        float diameter = doc["filament"]["diameter"] | 1.75f;
+        Serial.printf("[API] Extracted diameter: %.2f mm\n", diameter);
+        filteredDoc["filament"]["diameter"] = diameter;
+        
+        // Remaining weight (in grams)
+        int remainingWeight = doc["remaining_weight"] | 1000;
+        Serial.printf("[API] Extracted remaining weight: %d g\n", remainingWeight);
+        filteredDoc["remaining_weight"] = remainingWeight;
+        
+        // ===== BAMBU-SPECIFIC FIELDS (optional, kept for compatibility) =====
+        // Nozzle temperature string from extra field (for Bambu)
+        if (doc["filament"]["extra"]["nozzle_temperature"].is<String>()) {
+            String tempString = doc["filament"]["extra"]["nozzle_temperature"].as<String>();
+            tempString.replace("[", "");
+            tempString.replace("]", "");
+            filteredDoc["filament"]["extra"]["nozzle_temperature"] = tempString;
+        }
+        
+        // Bambu indices
+        if (doc["filament"]["extra"]["bambu_idx"].is<String>()) {
+            String bambuIdx = doc["filament"]["extra"]["bambu_idx"].as<String>();
+            bambuIdx.replace("\"", "");
+            filteredDoc["filament"]["extra"]["bambu_idx"] = bambuIdx;
+        }
+        
+        if (doc["filament"]["extra"]["bambu_cali_id"].is<String>()) {
+            String caliId = doc["filament"]["extra"]["bambu_cali_id"].as<String>();
+            caliId.replace("\"", "");
+            filteredDoc["filament"]["extra"]["bambu_cali_id"] = caliId;
+        }
+        
+        if (doc["filament"]["extra"]["bambu_setting_id"].is<String>()) {
+            String settingId = doc["filament"]["extra"]["bambu_setting_id"].as<String>();
+            settingId.replace("\"", "");
+            filteredDoc["filament"]["extra"]["bambu_setting_id"] = settingId;
+        }
+        
+        Serial.println("[API] Successfully extracted ALL Spoolman fields for ACE Pro mapping");
+        
     } else {
-        Serial.print("Fehler beim Abrufen der Spool-Daten. HTTP-Code: ");
+        Serial.print("[API] Failed to fetch spool data. HTTP Code: ");
         Serial.println(httpCode);
+        String errorBody = http.getString();
+        Serial.print("[API] Error response body (first 200 chars): ");
+        Serial.println(errorBody.substring(0, 200));
     }
 
     http.end();
+    if (!filteredDoc.isNull()) {
+        Serial.println("[API] Returning valid filteredDoc with all extracted fields");
+    } else {
+        Serial.println("[API] WARNING: Returning empty/null filteredDoc - fetch failed!");
+    }
     return filteredDoc;
 }
 

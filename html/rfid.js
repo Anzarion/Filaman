@@ -189,7 +189,28 @@ function updateConnectionStatus() {
     }
 }
 
-// Event Listeners
+// Event Listeners - MUST BE REGISTERED IMMEDIATELY
+// Diese müssen VOR den anderen Scripts registriert werden, daher hier am Anfang!
+document.addEventListener('filamentSelected', function (event) {
+    console.log("[DEBUG] filamentSelected event received!");
+    const writeBtn = document.getElementById("writeNfcButton");
+    const writeBtnBinary = document.getElementById("writeNfcButtonBinary");
+    console.log("[DEBUG] writeNfcButton found:", !!writeBtn);
+    console.log("[DEBUG] writeNfcButtonBinary found:", !!writeBtnBinary);
+    updateNfcInfo();
+    // Zeige Spool-Buttons wenn ein Filament ausgewählt wurde
+    const selectedText = document.getElementById("selected-filament").textContent;
+    updateSpoolButtons(selectedText !== "Bitte wählen...");
+});
+
+document.addEventListener('spoolDataLoaded', function(event) {
+    window.populateVendorDropdown(event.detail);
+});
+
+document.addEventListener('spoolmanError', function(event) {
+    showNotification(`Spoolman Error: ${event.detail.message}`, false);
+});
+
 document.addEventListener("DOMContentLoaded", function() {
     initWebSocket();
     
@@ -200,43 +221,43 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Event Listener für Spoolman Events
-document.addEventListener('spoolDataLoaded', function(event) {
-    window.populateVendorDropdown(event.detail);
-});
-
-document.addEventListener('spoolmanError', function(event) {
-    showNotification(`Spoolman Error: ${event.detail.message}`, false);
-});
-
-document.addEventListener('filamentSelected', function (event) {
-    updateNfcInfo();
-    // Zeige Spool-Buttons wenn ein Filament ausgewählt wurde
-    const selectedText = document.getElementById("selected-filament").textContent;
-    updateSpoolButtons(selectedText !== "Please choose...");
-});
-
 function updateNfcInfo() {
     const selectedText = document.getElementById("selected-filament").textContent;
     const nfcInfo = document.getElementById("nfcInfo");
     const writeButton = document.getElementById("writeNfcButton");
+    const writeButtonBinary = document.getElementById("writeNfcButtonBinary");
 
-    if (selectedText === "Please choose...") {
+    if (selectedText === "Bitte wählen...") {
         nfcInfo.textContent = "No Filament selected";
         nfcInfo.classList.remove("nfc-success", "nfc-error");
         writeButton.classList.add("hidden");
+        writeButtonBinary.classList.add("hidden");
         return;
     }
 
     // Finde die ausgewählte Spule in den Daten
+    const spoolsData = window.getSpoolData();
+    if (!spoolsData || spoolsData.length === 0) {
+        console.log("[DEBUG] SpoolsData is empty or not available yet");
+        writeButton.classList.add("hidden");
+        writeButtonBinary.classList.add("hidden");
+        return;
+    }
+
     const selectedSpool = spoolsData.find(spool => 
         `${spool.id} | ${spool.filament.name} (${spool.filament.material})` === selectedText
     );
 
     if (selectedSpool) {
+        console.log("[DEBUG] Spool found:", selectedSpool);
+        console.log("[DEBUG] Showing both Write Tag buttons");
         writeButton.classList.remove("hidden");
+        writeButtonBinary.classList.remove("hidden");
     } else {
+        console.log("[DEBUG] Spool NOT found for text:", selectedText);
+        console.log("[DEBUG] Available spools:", spoolsData.map(s => `${s.id} | ${s.filament.name} (${s.filament.material})`));
         writeButton.classList.add("hidden");
+        writeButtonBinary.classList.add("hidden");
     }
 }
 
@@ -674,6 +695,47 @@ function writeNfcTag() {
     }
 }
 
+function writeNfcTagBinary() {
+    if(!spoolDetected || confirm("Are you sure you want to overwrite the Tag with ACE Pro format?") == true){
+        const selectedText = document.getElementById("selected-filament").textContent;
+        if (selectedText === "Bitte wählen..." || selectedText === "Please choose...") {
+            alert('Bitte wählen Sie zuerst eine Spule aus.');
+            return;
+        }
+
+        const spoolsData = window.getSpoolData();
+        console.log("[DEBUG] writeNfcTagBinary - selectedText:", selectedText);
+        console.log("[DEBUG] writeNfcTagBinary - spoolsData length:", spoolsData.length);
+        
+        const selectedSpool = spoolsData.find(spool => {
+            const spoolText = `${spool.id} | ${spool.filament.name} (${spool.filament.material})`;
+            console.log("[DEBUG] Comparing:", spoolText, "===", selectedText, "?", spoolText === selectedText);
+            return spoolText === selectedText;
+        });
+
+        if (!selectedSpool) {
+            console.error("[ERROR] Spool not found! Selected text:", selectedText);
+            console.error("[ERROR] Available spools:", spoolsData.map(s => `${s.id} | ${s.filament.name} (${s.filament.material})`));
+            alert('Ausgewählte Spule konnte nicht gefunden werden. Bitte versuchen Sie erneut.');
+            return;
+        }
+
+        console.log("[DEBUG] Selected spool ID:", selectedSpool.id);
+
+        if (socket?.readyState === WebSocket.OPEN) {
+            const writeButton = document.getElementById("writeNfcButtonBinary");
+            writeButton.classList.add("writing");
+            writeButton.textContent = "Writing";
+            socket.send(JSON.stringify({
+                type: 'writeNfcTagBinary',
+                spoolId: selectedSpool.id
+            }));
+        } else {
+            alert('Not connected to Server. Please check connection.');
+        }
+    }
+}
+
 function writeLocationNfcTag() {
     if(!spoolDetected || confirm("Are you sure you want to overwrite the Tag?") == true){
         const selectedText = document.getElementById("locationSelect").value;
@@ -704,15 +766,26 @@ function writeLocationNfcTag() {
 
 function handleWriteNfcTagResponse(success) {
     const writeButton = document.getElementById("writeNfcButton");
+    const writeButtonBinary = document.getElementById("writeNfcButtonBinary");
     const writeLocationButton = document.getElementById("writeLocationNfcButton");
     if(writeButton.classList.contains("writing")){
         writeButton.classList.remove("writing");
         writeButton.classList.add(success ? "success" : "error");
         writeButton.textContent = success ? "Write success" : "Write failed";
-
+        
         setTimeout(() => {
             writeButton.classList.remove("success", "error");
-            writeButton.textContent = "Write Tag";
+            writeButton.textContent = "Write Tag (JSON)";
+        }, 5000);
+    }
+    if(writeButtonBinary.classList.contains("writing")){
+        writeButtonBinary.classList.remove("writing");
+        writeButtonBinary.classList.add(success ? "success" : "error");
+        writeButtonBinary.textContent = success ? "Write success" : "Write failed";
+
+        setTimeout(() => {
+            writeButtonBinary.classList.remove("success", "error");
+            writeButtonBinary.textContent = "Write Tag (ACE Pro)";
         }, 5000);
     }
 
