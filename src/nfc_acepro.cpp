@@ -87,30 +87,138 @@ String getMaterial(const JsonObject& spoolData) {
 }
 
 /**
+ * Extract material name with UTF-8 support for binary encoding
+ * Converts material string to individual byte encoding
+ * Adapted from EnderPy/AnycubicNFCScript UTF-8 handling
+ * 
+ * Behavior:
+ *   - Each character → its byte value (0-255)
+ *   - Pads remaining bytes with 0x00 to reach 20 bytes
+ *   - Maximum 19 characters (+ auto 0x00 at position 19)
+ */
+bool getMaterialUTF8(const JsonObject& spoolData, uint8_t* materialHex) {
+    if (!materialHex) {
+        Serial.println("[ACEPro] ERROR: getMaterialUTF8 - invalid output buffer");
+        return false;
+    }
+    
+    String material = String(spoolData["filament"]["material"] | "PLA");
+    material.toUpperCase();
+    
+    // Convert each character to its byte value
+    int byteIdx = 0;
+    for (int i = 0; i < material.length() && byteIdx < 19; i++) {
+        char c = material[i];
+        materialHex[byteIdx++] = (uint8_t)c;
+    }
+    
+    // Pad remaining bytes with 0x00 up to 20 bytes total
+    while (byteIdx < 20) {
+        materialHex[byteIdx++] = 0x00;
+    }
+    
+    Serial.printf("[ACEPro] Material UTF-8 encoded: %s -> %d bytes\n", material.c_str(), byteIdx);
+    return true;
+}
+
+/**
+ * Validate hex color string and convert to ABGR format
+ * Supports both 6-digit (RGB) and 8-digit (RGBA) hex codes
+ * Adapted from EnderPy/AnycubicNFCScript color validation
+ * 
+ * Validation checks:
+ *   1. Length must be 6 or 8 hex digits (with or without '#')
+ *   2. All characters must be valid hex (0-9, A-F, a-f)
+ *   3. Parsing must succeed with no overflow
+ */
+ColorValidation validateColorHex(const String& hexColor) {
+    ColorValidation result = {false, 0, "", 0};
+    String hex = hexColor;
+    
+    // Remove leading '#' if present
+    if (hex.startsWith("#")) {
+        hex = hex.substring(1);
+    }
+    
+    // Trim whitespace
+    hex.trim();
+    
+    // Check length: must be 6 or 8 for RGB or RGBA
+    if (hex.length() != 6 && hex.length() != 8) {
+        result.errorCode = 1;
+        result.errorMsg = "Invalid hex length (expected 6 or 8 digits, got " + String(hex.length()) + ")";
+        Serial.printf("[ACEPro] Color validation ERROR: %s\n", result.errorMsg.c_str());
+        return result;
+    }
+    
+    // Validate all characters are valid hex digits
+    for (int i = 0; i < hex.length(); i++) {
+        char c = hex[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+            result.errorCode = 2;
+            result.errorMsg = "Invalid hex character at position " + String(i) + ": '" + String(c) + "'";
+            Serial.printf("[ACEPro] Color validation ERROR: %s\n", result.errorMsg.c_str());
+            return result;
+        }
+    }
+    
+    // Parse hex string to uint32
+    char* endptr;
+    uint32_t colorValue = strtol(hex.c_str(), &endptr, 16);
+    
+    if (endptr == hex.c_str()) {
+        result.errorCode = 3;
+        result.errorMsg = "Failed to parse hex value";
+        Serial.printf("[ACEPro] Color validation ERROR: %s\n", result.errorMsg.c_str());
+        return result;
+    }
+    
+    // Extract color components
+    uint8_t r, g, b, a;
+    
+    if (hex.length() == 6) {
+        // RGB format: RRGGBB
+        r = (colorValue >> 16) & 0xFF;
+        g = (colorValue >> 8) & 0xFF;
+        b = colorValue & 0xFF;
+        a = 0xFF;  // Default full opacity
+    } else {
+        // RGBA format: AARRGGBB
+        a = (colorValue >> 24) & 0xFF;
+        r = (colorValue >> 16) & 0xFF;
+        g = (colorValue >> 8) & 0xFF;
+        b = colorValue & 0xFF;
+    }
+    
+    // Convert to ABGR: [Alpha, Blue, Green, Red]
+    result.colorABGR = (a << 24) | (b << 16) | (g << 8) | r;
+    result.isValid = true;
+    result.errorCode = 0;
+    result.errorMsg = "OK";
+    
+    Serial.printf("[ACEPro] Color validation OK: #%s (RGBA) -> 0x%08X (ABGR)\n", hex.c_str(), result.colorABGR);
+    return result;
+}
+
+/**
  * Convert RGB hex from Spoolman to ABGR format for ACE Pro
  * Input:  "#FF5533" (RGB hex)
  * Output: 0xFF3357FF (ABGR uint32_t)
- * Note: Alpha channel always 0xFF (fully opaque)
+ * Note: Now uses validateColorHex() internally for robustness
  */
 uint32_t getColor(const JsonObject& spoolData) {
     String colorHex = String(spoolData["filament"]["color_hex"] | "#FFFFFF");
     
-    // Remove '#' if present
-    if (colorHex.startsWith("#")) {
-        colorHex = colorHex.substring(1);
+    // Use validation function
+    ColorValidation validation = validateColorHex(colorHex);
+    
+    if (validation.isValid) {
+        return validation.colorABGR;
     }
     
-    // Parse hex string to uint32 (RGB)
-    uint32_t rgb = strtol(colorHex.c_str(), NULL, 16);
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >> 8) & 0xFF;
-    uint8_t b = rgb & 0xFF;
-    
-    // Return as ABGR: 0xFF000000 | (Blue << 16) | (Green << 8) | Red
-    uint32_t abgr = 0xFF000000 | (b << 16) | (g << 8) | r;
-    
-    Serial.printf("[ACEPro] Color conversion: #%s (RGB) -> 0x%08X (ABGR)\n", colorHex.c_str(), abgr);
-    return abgr;
+    // Fallback to white if validation fails
+    Serial.printf("[ACEPro] Color validation failed, using white fallback\n");
+    return 0xFFFFFFFF;  // White in ABGR
 }
 
 /**
@@ -357,12 +465,23 @@ bool extractACEProData(const JsonObject& spoolData, ACEProData& aceData) {
     String brand = getBrand(spoolData);
     brand.toCharArray(aceData.brand, sizeof(aceData.brand));
     
-    // Extract Material
+    // Extract Material (string version for compatibility)
     String material = getMaterial(spoolData);
     material.toCharArray(aceData.material, sizeof(aceData.material));
     
-    // Extract and convert Color to ABGR
+    // Extract Color with enhanced validation
     uint32_t colorABGR = getColor(spoolData);
+    
+    // Log color conversion result with validation details
+    String colorHex = String(spoolData["filament"]["color_hex"] | "#FFFFFF");
+    ColorValidation colorVal = validateColorHex(colorHex);
+    if (colorVal.isValid) {
+        Serial.printf("[ACEPro] ✓ Color validation passed: %s\n", colorVal.errorMsg.c_str());
+    } else {
+        Serial.printf("[ACEPro] ⚠️  Color validation warning (code %d): %s\n", colorVal.errorCode, colorVal.errorMsg.c_str());
+    }
+    
+    // Store ABGR bytes
     aceData.colorABGR[0] = (uint8_t)((colorABGR >> 24) & 0xFF);  // Alpha
     aceData.colorABGR[1] = (uint8_t)((colorABGR >> 16) & 0xFF);  // Blue
     aceData.colorABGR[2] = (uint8_t)((colorABGR >> 8) & 0xFF);   // Green

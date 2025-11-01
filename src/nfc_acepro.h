@@ -109,9 +109,58 @@ String getBrand(const JsonObject& spoolData);
 String getMaterial(const JsonObject& spoolData);
 
 /**
+ * Extract material name with UTF-8 support for binary encoding
+ * Supports international characters and umlauts
+ * Adapted from EnderPy/AnycubicNFCScript UTF-8 handling
+ * 
+ * @param spoolData Spoolman JSON filament object
+ * @param materialHex Output buffer (minimum 20 bytes for padding)
+ * @return true if extraction successful, false on error
+ * 
+ * Behavior:
+ *   - Converts material string to individual byte encoding
+ *   - Supports ASCII and UTF-8 characters
+ *   - Pads remaining bytes with 0x00 to reach 20 bytes
+ *   - Maximum 19 characters + null terminator
+ * 
+ * Examples:
+ *   - "PLA" → [0x50, 0x4C, 0x41, 0x00, ...]
+ *   - "PLA+" → [0x50, 0x4C, 0x41, 0x2B, 0x00, ...]
+ *   - "PETG" → [0x50, 0x45, 0x54, 0x47, 0x00, ...]
+ */
+bool getMaterialUTF8(const JsonObject& spoolData, uint8_t* materialHex);
+
+/**
+ * Color Validation Result Structure
+ * Contains validation status and detailed error information
+ * Adapted from EnderPy/AnycubicNFCScript validation patterns
+ */
+struct ColorValidation {
+    bool isValid;
+    uint8_t errorCode;  // 0=OK, 1=invalid length, 2=invalid char, 3=parse error
+    String errorMsg;
+    uint32_t colorABGR; // Valid color in ABGR format (0 if invalid)
+};
+
+/**
+ * Validate hex color string and convert to ABGR format
+ * Supports both 6-digit (RGB) and 8-digit (RGBA) hex codes
+ * Adapted from EnderPy/AnycubicNFCScript color handling
+ * 
+ * Input examples:
+ *   - "#FF5533" (RGB, 6 digits)
+ *   - "FF5533" (RGB without #)
+ *   - "#AA123456" (RGBA with transparency, 8 digits)
+ * 
+ * Output: Validation struct with ABGR result or error details
+ */
+ColorValidation validateColorHex(const String& hexColor);
+
+/**
  * Convert RGB hex from Spoolman to ABGR format for ACE Pro
  * Input:  "#FF5533" (RGB hex)
  * Output: 0xFF3357FF (ABGR uint32_t)
+ * NOTE: Now uses validateColorHex() internally for robustness
  */
 uint32_t getColor(const JsonObject& spoolData);
 
