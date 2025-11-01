@@ -616,3 +616,65 @@ void writeNfcTagBinaryTask(void* param) {
     Serial.println("[ACEPro] Write task completed");
     vTaskDelete(NULL);
 }
+
+/**
+ * Validate Brand + Material fields read from ACE Pro tag
+ * Provides separate validation for fallback matching scenarios
+ * 
+ * @param brand Brand string extracted from Pages 10-14
+ * @param material Material string extracted from Pages 15-19
+ * @return true if both fields are valid, false if either is corrupted/empty
+ */
+bool validateACEProBrandMaterial(const String& brand, const String& material) {
+    Serial.println("[ACEPro-Validation] Starting Brand+Material validation...");
+    
+    // Check if brand is not empty
+    if (brand.isEmpty() || brand.length() == 0) {
+        Serial.println("[ACEPro-Validation] ❌ Brand field is empty");
+        return false;
+    }
+    
+    // Check if material is not empty
+    if (material.isEmpty() || material.length() == 0) {
+        Serial.println("[ACEPro-Validation] ❌ Material field is empty");
+        return false;
+    }
+    
+    // Validate brand - check for valid ASCII characters
+    for (unsigned int i = 0; i < brand.length(); i++) {
+        char c = brand.charAt(i);
+        // Allow ASCII printable characters (0x20-0x7E) and common umlauts converted to ASCII
+        if ((c < 0x20 || c > 0x7E) && c != 0x00) {
+            Serial.printf("[ACEPro-Validation] ❌ Invalid character in brand at position %d: 0x%02X\n", i, (uint8_t)c);
+            return false;
+        }
+    }
+    
+    // Validate material - check for valid ASCII characters
+    for (unsigned int i = 0; i < material.length(); i++) {
+        char c = material.charAt(i);
+        // Allow ASCII printable characters (0x20-0x7E)
+        if ((c < 0x20 || c > 0x7E) && c != 0x00) {
+            Serial.printf("[ACEPro-Validation] ❌ Invalid character in material at position %d: 0x%02X\n", i, (uint8_t)c);
+            return false;
+        }
+    }
+    
+    // Additional validation: reasonable length (not too short, not too long)
+    if (brand.length() > 18) {
+        Serial.println("[ACEPro-Validation] ⚠ Brand length exceeds 18 chars (corrupted?)");
+        return false;
+    }
+    
+    if (material.length() > 18) {
+        Serial.println("[ACEPro-Validation] ⚠ Material length exceeds 18 chars (corrupted?)");
+        return false;
+    }
+    
+    // Both fields are valid
+    Serial.printf("[ACEPro-Validation] ✓ Brand + Material validation successful\n");
+    Serial.printf("[ACEPro-Validation]   Brand: '%s' (%d bytes)\n", brand.c_str(), brand.length());
+    Serial.printf("[ACEPro-Validation]   Material: '%s' (%d bytes)\n", material.c_str(), material.length());
+    
+    return true;
+}

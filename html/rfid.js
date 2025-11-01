@@ -244,9 +244,33 @@ function updateNfcInfo() {
         return;
     }
 
-    const selectedSpool = spoolsData.find(spool => 
+    // Exact match: ID | Name (Material)
+    let selectedSpool = spoolsData.find(spool => 
         `${spool.id} | ${spool.filament.name} (${spool.filament.material})` === selectedText
     );
+
+    // Fallback: Match by Brand + Material wenn keine exakte Übereinstimmung
+    // (Für Fälle, wo Spoolman-ID nicht auf Tag geschrieben war)
+    if (!selectedSpool && selectedText.includes(" | ")) {
+        const parts = selectedText.split(" | ");
+        if (parts.length === 2) {
+            const nameWithMaterial = parts[1].trim(); // "Name (Material)"
+            const materialMatch = nameWithMaterial.match(/\((.*?)\)$/);
+            const material = materialMatch ? materialMatch[1] : "";
+            
+            if (material) {
+                console.log("[DEBUG] Attempting fallback match for material:", material);
+                selectedSpool = spoolsData.find(spool => 
+                    spool.filament.material.toLowerCase() === material.toLowerCase() &&
+                    spool.filament.vendor.name.toLowerCase() === (parts[0].split("|")[0]?.trim() || "").toLowerCase()
+                );
+                
+                if (selectedSpool) {
+                    console.log("[DEBUG] Fallback match successful via Brand+Material");
+                }
+            }
+        }
+    }
 
     if (selectedSpool) {
         console.log("[DEBUG] Spool found:", selectedSpool);

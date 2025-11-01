@@ -162,4 +162,15 @@ void startWriteNfcTagBinary(const char* spoolId);
  */
 void writeNfcTagBinaryTask(void* param);
 
+/**
+ * Separate validation for Brand + Material read from tag
+ * Enables fallback matching even when Spoolman ID is missing
+ * Used for tags that don't have sm_id (Pages 35-39) written
+ * 
+ * @param brand Brand string read from tag (Pages 10-14)
+ * @param material Material string read from tag (Pages 15-19)
+ * @return true if both fields are non-empty and valid ASCII
+ */
+bool validateACEProBrandMaterial(const String& brand, const String& material);
+
 #endif
