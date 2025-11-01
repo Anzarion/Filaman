@@ -154,10 +154,131 @@ void toLE16(uint16_t value, uint8_t* bytes) {
 }
 
 /**
+ * Check if a page is protected/read-only on NTAG2xx tags
+ * NTAG213/215/216: Pages 0-3 (UID/system), Pages 42+ (config/lock)
+ * Returns true for any page that should NOT be written
+ */
+bool isPageProtected(uint8_t page) {
+    // System pages (UID, BCC, etc.) - always protected
+    if (page < 4) {
+        return true;
+    }
+    
+    // NTAG213 (180 bytes, 45 pages total):
+    // - Writable: Pages 4-39
+    // - Protected: Pages 40-45 (config/lock)
+    
+    // NTAG215 (540 bytes, 135 pages total):
+    // - Writable: Pages 4-130
+    // - Protected: Pages 131-134 (config/lock)
+    
+    // NTAG216 (888 bytes, 222 pages total):
+    // - Writable: Pages 4-215
+    // - Protected: Pages 216-221 (config/lock)
+    
+    // Conservative: Protect pages beyond 215 (safe for all tags)
+    if (page > 215) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Pick the first available temperature range from A, B, or C
+ * Useful when Spoolman tag might have multiple profiles set
+ * Fallback strategy: Try A → B → C
+ * 
+ * Example:
+ *   rangeA.isValid=false, rangeB={200,230, true} → returns rangeB
+ *   rangeA.isValid=false, rangeB.isValid=false, rangeC={210,240,true} → returns rangeC
+ */
+TempRange pickAvailableRange(const TempRange& rangeA, const TempRange& rangeB, const TempRange& rangeC) {
+    // Try range A first (primary profile)
+    if (rangeA.isValid && rangeA.nozzleMin > 0 && rangeA.nozzleMax > rangeA.nozzleMin) {
+        Serial.printf("[ACEPro] Using nozzle range A: %d-%d°C\n", rangeA.nozzleMin, rangeA.nozzleMax);
+        return rangeA;
+    }
+    
+    // Fallback to range B
+    if (rangeB.isValid && rangeB.nozzleMin > 0 && rangeB.nozzleMax > rangeB.nozzleMin) {
+        Serial.printf("[ACEPro] Range A empty, using range B: %d-%d°C\n", rangeB.nozzleMin, rangeB.nozzleMax);
+        return rangeB;
+    }
+    
+    // Last resort: range C
+    if (rangeC.isValid && rangeC.nozzleMin > 0 && rangeC.nozzleMax > rangeC.nozzleMin) {
+        Serial.printf("[ACEPro] Ranges A/B empty, using range C: %d-%d°C\n", rangeC.nozzleMin, rangeC.nozzleMax);
+        return rangeC;
+    }
+    
+    // All ranges invalid - return rangeA (which has current defaults from extraction)
+    Serial.printf("[ACEPro] All ranges invalid or empty, using defaults: %d-%d°C\n", rangeA.nozzleMin, rangeA.nozzleMax);
+    return rangeA;
+}
+
+/**
+ * Find NDEF TLV message in tag memory
+ * NDEF messages are stored in TLV format with:
+ *   - Type: 0x03 (NDEF Message)
+ *   - Length: 1 byte (short) or 0xFF + 2 bytes (extended)
+ *   - Value: NDEF record(s)
+ * 
+ * Can handle:
+ *   - Standard short-length: 0x03 0xLL [NDEF data]
+ *   - Extended-length: 0x03 0xFF 0xLL 0xLL [NDEF data] (from reference repo)
+ *   - Empty/terminator: 0xFE
+ */
+int findNdefTlvStart(const uint8_t* buffer, size_t bufferSize) {
+    if (!buffer || bufferSize < 2) {
+        Serial.println("[NDEF] Invalid buffer for NDEF search");
+        return -1;
+    }
+    
+    for (size_t i = 0; i < bufferSize - 1; i++) {
+        // Found NDEF message type
+        if (buffer[i] == 0x03) {
+            uint8_t lengthByte = buffer[i + 1];
+            
+            // Check for extended-length format (0xFF 0xLL 0xLL)
+            if (lengthByte == 0xFF) {
+                if (i + 4 < bufferSize) {
+                    // Valid extended-length NDEF message
+                    Serial.printf("[NDEF] Found NDEF TLV at offset 0x%02X (extended-length format)\n", (unsigned int)i);
+                    return (int)i;
+                }
+            }
+            // Standard short-length format
+            else if (lengthByte > 0 && lengthByte <= 0xFE) {
+                // Valid short-length NDEF message
+                Serial.printf("[NDEF] Found NDEF TLV at offset 0x%02X (short-length: %d bytes)\n", (unsigned int)i, lengthByte);
+                return (int)i;
+            }
+        }
+        
+        // Stop scanning at terminator TLV (0xFE)
+        if (buffer[i] == 0xFE) {
+            Serial.printf("[NDEF] Hit terminator TLV at offset 0x%02X, stopping search\n", (unsigned int)i);
+            break;
+        }
+    }
+    
+    Serial.println("[NDEF] No valid NDEF TLV message found");
+    return -1;
+}
+
+/**
  * Write single page + verify immediately
- * Returns: true if success, false if all retries failed
+ * ENHANCEMENT: Checks for protected pages before attempting write
+ * Returns: true if success, false if all retries failed or page protected
  */
 bool writePageVerify(uint8_t page, uint8_t* data) {
+    // SAFETY CHECK: Prevent writing to protected pages
+    if (isPageProtected(page)) {
+        Serial.printf("[ACEPro] ⚠️  SAFETY: Page %d is PROTECTED - skipping write\n", page);
+        return false;
+    }
+    
     const int MAX_RETRIES = 5;  // Increased from 3 to 5
     
     for (int retry = 0; retry < MAX_RETRIES; retry++) {

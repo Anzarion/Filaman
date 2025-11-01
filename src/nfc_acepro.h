@@ -173,4 +173,43 @@ void writeNfcTagBinaryTask(void* param);
  */
 bool validateACEProBrandMaterial(const String& brand, const String& material);
 
+/**
+ * Check if a page is protected/read-only on NTAG2xx tags
+ * NTAG213/215/216 have locked pages at the beginning (0x00-0x03)
+ * and at the end (configuration pages)
+ * 
+ * @param page Page number to check
+ * @return true if page is protected, false if writable
+ */
+bool isPageProtected(uint8_t page);
+
+/**
+ * Pick the first available temperature range from A, B, or C
+ * Used when Spoolman only provides one range profile
+ * Falls back to next available if primary is missing
+ * 
+ * @param rangeA Temperature range A (primary)
+ * @param rangeB Temperature range B (fallback 1)
+ * @param rangeC Temperature range C (fallback 2)
+ * @return First non-empty range, or rangeA if all empty
+ */
+struct TempRange {
+    uint16_t nozzleMin;
+    uint16_t nozzleMax;
+    bool isValid;
+};
+
+TempRange pickAvailableRange(const TempRange& rangeA, const TempRange& rangeB, const TempRange& rangeC);
+
+/**
+ * Search for NDEF TLV message start in tag memory
+ * Handles both standard (short) and extended-length TLV records
+ * Supports NDEF messages starting at various positions
+ * 
+ * @param buffer Memory buffer from tag (typically 255+ bytes)
+ * @param bufferSize Size of buffer
+ * @return Offset of NDEF TLV marker (0x03) or -1 if not found
+ */
+int findNdefTlvStart(const uint8_t* buffer, size_t bufferSize);
+
 #endif
