@@ -149,7 +149,28 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
             filteredDoc["filament"]["extra"]["bambu_setting_id"] = settingId;
         }
         
-        Serial.println("[API] Successfully extracted ALL Spoolman fields for ACE Pro mapping");
+        // ===== FLAT STRUCTURE FOR BACKWARD COMPATIBILITY (print-cost-calculator) =====
+        // Provide flattened keys for existing code that expects flat structure
+        filteredDoc["type"] = material;
+        filteredDoc["brand"] = brand;
+        filteredDoc["color"] = colorHex;
+        filteredDoc["nozzle_temp_min"] = nozzleTempMin;
+        filteredDoc["nozzle_temp_max"] = nozzleTempMax;
+        
+        // Extract and provide bambu indices in flat structure too
+        if (doc["filament"]["extra"]["bambu_idx"].is<String>()) {
+            String trayInfoIdx = doc["filament"]["extra"]["bambu_idx"].as<String>();
+            trayInfoIdx.replace("\"", "");
+            filteredDoc["tray_info_idx"] = trayInfoIdx;
+        }
+        
+        if (doc["filament"]["extra"]["bambu_cali_id"].is<String>()) {
+            String caliIdx = doc["filament"]["extra"]["bambu_cali_id"].as<String>();
+            caliIdx.replace("\"", "");
+            filteredDoc["cali_idx"] = caliIdx;
+        }
+        
+        Serial.println("[API] Successfully extracted ALL Spoolman fields (hierarchical + flat for compatibility)");
         
     } else {
         Serial.print("[API] Failed to fetch spool data. HTTP Code: ");
