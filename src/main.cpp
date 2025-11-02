@@ -226,6 +226,13 @@ void loop() {
       // set the current tag as processed to prevent it beeing processed again
       tagProcessed = true;
 
+      // Speichere weight_before_print + bewahre nfc_id
+      if (updateSpoolExtraFields(activeSpoolId, weight)) {
+        Serial.println("Weight before print successfully saved");
+      } else {
+        Serial.println("Warning: Failed to save weight before print, but continuing with weight update");
+      }
+
       if (updateSpoolWeight(activeSpoolId, weight)) 
       {
         weightSend = 1;
@@ -252,6 +259,13 @@ void loop() {
     {
       // set the current tag as processed to prevent it beeing processed again
       tagProcessed = true;
+
+      // Speichere weight_before_print + bewahre nfc_id
+      if (updateSpoolExtraFields(activeSpoolId, weight)) {
+        Serial.println("Weight before print successfully saved");
+      } else {
+        Serial.println("Warning: Failed to save weight before print, but continuing with weight update");
+      }
 
       if (updateSpoolWeight(activeSpoolId, weight)) 
       {

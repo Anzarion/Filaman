@@ -555,6 +555,103 @@ bool updateSpoolTagId(String uidString, const char* payload) {
     return true;
 }
 
+JsonDocument fetchSpoolData(String spoolId) {
+    HTTPClient http;
+    String spoolsUrl = spoolmanUrl + apiUrl + "/spool/" + spoolId;
+
+    http.begin(spoolsUrl);
+    http.setTimeout(10000);
+    int httpCode = http.GET();
+
+    JsonDocument spoolData;
+    if (httpCode == HTTP_CODE_OK) {
+        String payload = http.getString();
+        
+        DeserializationError error = deserializeJson(spoolData, payload);
+        if (error) {
+            Serial.print("Fehler beim Parsen der Spuldaten: ");
+            Serial.println(error.c_str());
+            spoolData.clear();
+        }
+    } else {
+        Serial.print("Fehler beim Abrufen der Spuldaten. HTTP-Code: ");
+        Serial.println(httpCode);
+    }
+
+    http.end();
+    return spoolData;
+}
+
+bool updateSpoolExtraFields(String spoolId, uint16_t weightBeforePrint) {
+    // Hole aktuelle Spuldaten
+    JsonDocument currentSpool = fetchSpoolData(spoolId);
+    
+    if (currentSpool.isNull() || !currentSpool["extra"].is<JsonObject>()) {
+        Serial.println("Fehler: weight_before_print nicht gespeichert");
+        return false;
+    }
+
+    // Erstelle neues Extra-Feld Payload mit weight_before_print + bewahre nfc_id
+    JsonDocument extraFieldsDoc;
+    
+    // Bewahre existierende extra_fields, insbesondere nfc_id
+    if (currentSpool["extra"].is<JsonObject>()) {
+        for (auto pair : currentSpool["extra"].as<JsonObject>()) {
+            extraFieldsDoc[pair.key()] = pair.value();
+        }
+    }
+    
+    // Hole weight aus Spoolman (NETTO Startwert)
+    // NOTE: Spoolman returns "remaining_weight" NOT "weight"
+    uint16_t spoolmanWeight = 0;
+    
+    if (currentSpool["remaining_weight"].is<float>()) {
+        spoolmanWeight = (uint16_t)currentSpool["remaining_weight"].as<float>();
+    } else if (currentSpool["remaining_weight"].is<int>()) {
+        spoolmanWeight = (uint16_t)currentSpool["remaining_weight"].as<int>();
+    } else if (currentSpool["remaining_weight"].is<String>()) {
+        spoolmanWeight = currentSpool["remaining_weight"].as<String>().toInt();
+    } else if (currentSpool["remaining_weight"].is<uint16_t>()) {
+        spoolmanWeight = currentSpool["remaining_weight"].as<uint16_t>();
+    }
+    
+    // Setze weight_before_print (NETTO Startwert von Spoolman, muss als String sein für API)
+    extraFieldsDoc["weight_before_print"] = String(spoolmanWeight);
+    
+    // Erstelle Payload mit "extra" Wrapper
+    JsonDocument patchPayload;
+    patchPayload["extra"] = extraFieldsDoc;
+    
+    String extraPayload;
+    serializeJson(patchPayload, extraPayload);
+
+    // Sende PATCH Request
+    HTTPClient http;
+    String spoolsUrl = spoolmanUrl + apiUrl + "/spool/" + spoolId;
+    http.begin(spoolsUrl);
+    http.setTimeout(10000);
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpCode = http.PATCH(extraPayload);
+    
+    if (httpCode == HTTP_CODE_OK || httpCode == 200) {
+        Serial.print("weight_before_print: ");
+        Serial.print(spoolmanWeight);
+        Serial.println("g");
+        http.end();
+        extraFieldsDoc.clear();
+        currentSpool.clear();
+        return true;
+    } else {
+        Serial.print("Fehler: HTTP ");
+        Serial.println(httpCode);
+        http.end();
+        extraFieldsDoc.clear();
+        currentSpool.clear();
+        return false;
+    }
+}
+
 uint8_t updateSpoolWeight(String spoolId, uint16_t weight) {
     HEAP_DEBUG_MESSAGE("updateSpoolWeight begin");
     oledShowProgressBar(3, octoEnabled?5:4, "Spool Tag", "Spoolman update");
@@ -1159,7 +1256,8 @@ bool checkSpoolmanExtraFields() {
         };
 
         String spoolExtra[] = {
-            "nfc_id"
+            "nfc_id",
+            "weight_before_print"
         };
 
         String filamentExtra[] = {
@@ -1177,7 +1275,13 @@ bool checkSpoolmanExtraFields() {
         String spoolExtraFields[] = {
             "{\"name\": \"NFC ID\","
             "\"key\": \"nfc_id\","
-            "\"field_type\": \"text\"}"
+            "\"field_type\": \"text\"}",
+
+            "{\"name\": \"Weight Before Print\","
+            "\"unit\": \"g\","
+            "\"field_type\": \"float\","
+            "\"default_value\": \"0\","
+            "\"key\": \"weight_before_print\"}"
         };
 
         String filamentExtraFields[] = {

@@ -2071,6 +2071,15 @@ void writeJsonToTag(void *parameter) {
                 String spoolId = payloadDoc["sm_id"].as<String>();
                 if (spoolId != "") {
                   Serial.printf("Updating spool %s with weight %dg\n", spoolId.c_str(), weight);
+                  
+                  // SCHRITT 1: Speichere weight_before_print + bewahre nfc_id
+                  if (updateSpoolExtraFields(spoolId, weight)) {
+                    Serial.println("Weight before print successfully saved");
+                  } else {
+                    Serial.println("Warning: Failed to save weight before print, but continuing with weight update");
+                  }
+                  
+                  // SCHRITT 2: Sende das neue Gewicht
                   updateSpoolWeight(spoolId, weight);
                 } else {
                   Serial.println("No valid spool ID found for weight update");
