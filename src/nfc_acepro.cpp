@@ -810,7 +810,7 @@ void writeNfcTagBinaryTask(void* param) {
         ndefPayload["sm_id"] = aceData.spoolId;
         ndefPayload["sku"] = aceData.sku;
         ndefPayload["brand"] = aceData.brand;
-        ndefPayload["material"] = aceData.material;
+        ndefPayload["type"] = aceData.material;
         
         // Serialize to string
         String ndefPayloadStr;
