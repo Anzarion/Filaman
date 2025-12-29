@@ -1768,15 +1768,16 @@ bool quickSpoolIdCheck(String uidString) {
     }
     
     // Step 2: Check for ACE Pro tag format (magic bytes at page 4)
-    bool isAceProTag = (initialData[0] == 0x7B && initialData[1] == 0x00 && 
+    bool isAceProTag = (initialData[0] == 0x7B && initialData[1] == 0x00 &&
                         initialData[2] == 0x65 && initialData[3] == 0x00);
-    
+
     uint8_t ndefData[20];
     memset(ndefData, 0, 20);
-    
+
     if (isAceProTag) {
         // ACE Pro hybrid format: NDEF starts at page 40
-        Serial.println("FAST-PATH: Detected ACE Pro tag format - reading from page 40");
+        Serial.println("FAST-PATH: Detected ACE Pro tag format (magic bytes: 7B 00 65 00)");
+        Serial.println("FAST-PATH: Reading NDEF from pages 40-44 (ACE Pro hybrid format)");
         for (uint8_t page = 40; page < 45; page++) {
             if (!robustPageRead(page, ndefData + (page - 40) * 4)) {
                 Serial.printf("FAST-PATH: Failed to read ACE Pro page %d - falling back to full read\n", page);
@@ -1785,6 +1786,8 @@ bool quickSpoolIdCheck(String uidString) {
         }
     } else {
         // Legacy NDEF-only format: NDEF starts at page 4
+        Serial.println("FAST-PATH: Detected Legacy NDEF-only format");
+        Serial.println("FAST-PATH: Using NDEF from pages 4-8 (already read)");
         memcpy(ndefData, initialData, 20);
     }
     
@@ -1848,13 +1851,25 @@ bool quickSpoolIdCheck(String uidString) {
     // Check if payload starts within our read data
     if (payloadOffset >= 20) {
         Serial.println("✗ FAST-PATH: JSON payload starts beyond quick read data - need more pages");
-        
+
         // Read additional pages to get to JSON payload
+        // CRITICAL: Use correct page range based on tag format!
         uint8_t extraData[16]; // Read 4 more pages
         memset(extraData, 0, 16);
-        
-        for (uint8_t page = 9; page < 13; page++) {
-            if (!robustPageRead(page, extraData + (page - 9) * 4)) {
+
+        uint8_t startPage = isAceProTag ? 45 : 9;  // ACE Pro: pages 45-48, Legacy: pages 9-12
+        uint8_t endPage = startPage + 4;
+
+        Serial.print("FAST-PATH: Reading additional pages ");
+        Serial.print(startPage);
+        Serial.print("-");
+        Serial.print(endPage - 1);
+        Serial.print(" (");
+        Serial.print(isAceProTag ? "ACE Pro" : "Legacy");
+        Serial.println(" format)");
+
+        for (uint8_t page = startPage; page < endPage; page++) {
+            if (!robustPageRead(page, extraData + (page - startPage) * 4)) {
                 Serial.print("FAST-PATH: Failed to read additional page ");
                 Serial.print(page);
                 Serial.println(" - falling back to full read");
@@ -1866,7 +1881,9 @@ bool quickSpoolIdCheck(String uidString) {
         uint8_t combinedData[36];
         memcpy(combinedData, ndefData, 20);
         memcpy(combinedData + 20, extraData, 16);
-        
+
+        Serial.println("FAST-PATH: Successfully read and combined 36 bytes of NDEF data");
+
         // Extract JSON from combined data
         String jsonStart = "";
         int jsonStartPos = payloadOffset;
@@ -1878,19 +1895,23 @@ bool quickSpoolIdCheck(String uidString) {
             // Stop at first brace to get just the beginning
             if (currentByte == '{' && i > 0) break;
         }
-        
-        Serial.print("JSON start from extended read: ");
+
+        Serial.print("FAST-PATH: Extracted JSON start (from offset ");
+        Serial.print(payloadOffset);
+        Serial.print("): ");
         Serial.println(jsonStart);
         
         // Check for sm_id pattern - look for non-zero sm_id values
         if (jsonStart.indexOf("\"sm_id\":\"") >= 0) {
+            Serial.println("FAST-PATH: Found sm_id field in extended read data");
             int smIdStart = jsonStart.indexOf("\"sm_id\":\"") + 9;
             int smIdEnd = jsonStart.indexOf("\"", smIdStart);
-            
+
             if (smIdEnd > smIdStart && smIdEnd < jsonStart.length()) {
                 String quickSpoolId = jsonStart.substring(smIdStart, smIdEnd);
-                Serial.print("Found sm_id in extended read: ");
-                Serial.println(quickSpoolId);
+                Serial.print("FAST-PATH: Extracted sm_id value: \"");
+                Serial.print(quickSpoolId);
+                Serial.println("\"");
                 
                 // Only process if sm_id is not "0" (known spool)
                 if (quickSpoolId != "0" && quickSpoolId.length() > 0) {
