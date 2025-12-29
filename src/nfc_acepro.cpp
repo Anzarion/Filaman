@@ -202,20 +202,43 @@ ColorValidation validateColorHex(const String& hexColor) {
 
 /**
  * Convert RGB hex from Spoolman to ABGR format for ACE Pro
- * Input:  "#FF5533" (RGB hex)
+ * Input:  "#FF5533" (RGB hex) or multi_color_hexes "FF5533,AABBCC"
  * Output: 0xFF3357FF (ABGR uint32_t)
- * Note: Now uses validateColorHex() internally for robustness
+ * Note: Now supports both color_hex and multi_color_hexes
  */
 uint32_t getColor(const JsonObject& spoolData) {
-    String colorHex = String(spoolData["filament"]["color_hex"] | "#FFFFFF");
-    
+    String colorHex;
+
+    // First try multi_color_hexes (for multi-color filaments)
+    if (spoolData["filament"]["multi_color_hexes"].is<const char*>()) {
+        String multiColors = String(spoolData["filament"]["multi_color_hexes"]);
+
+        // Extract first color (before comma)
+        int commaIndex = multiColors.indexOf(',');
+        if (commaIndex > 0) {
+            colorHex = multiColors.substring(0, commaIndex);
+            Serial.printf("[ACEPro] Multi-color filament detected, using first color: %s\n", colorHex.c_str());
+        } else {
+            colorHex = multiColors;
+        }
+    }
+    // Fallback to single color_hex
+    else if (spoolData["filament"]["color_hex"].is<const char*>()) {
+        colorHex = String(spoolData["filament"]["color_hex"]);
+    }
+    // Default fallback
+    else {
+        colorHex = "#FFFFFF";
+        Serial.println("[ACEPro] No color found in Spoolman, using white fallback");
+    }
+
     // Use validation function
     ColorValidation validation = validateColorHex(colorHex);
-    
+
     if (validation.isValid) {
         return validation.colorABGR;
     }
-    
+
     // Fallback to white if validation fails
     Serial.printf("[ACEPro] Color validation failed, using white fallback\n");
     return 0xFFFFFFFF;  // White in ABGR

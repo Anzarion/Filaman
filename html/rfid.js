@@ -700,16 +700,26 @@ function writeNfcTag() {
         // Temperaturwerte korrekt extrahieren
         let minTemp = "175";
         let maxTemp = "275";
-        
-        if (Array.isArray(selectedSpool.filament.nozzle_temperature) && 
+
+        if (Array.isArray(selectedSpool.filament.nozzle_temperature) &&
             selectedSpool.filament.nozzle_temperature.length >= 2) {
             minTemp = String(selectedSpool.filament.nozzle_temperature[0]);
             maxTemp = String(selectedSpool.filament.nozzle_temperature[1]);
         }
 
+        // Farbe extrahieren (unterstützt sowohl color_hex als auch multi_color_hexes)
+        let colorHex = "FFFFFF";
+        if (selectedSpool.filament.multi_color_hexes) {
+            // Multi-color: Nimm erste Farbe
+            const colors = selectedSpool.filament.multi_color_hexes.split(',');
+            colorHex = colors[0].trim().replace('#', '');
+        } else if (selectedSpool.filament.color_hex) {
+            colorHex = selectedSpool.filament.color_hex.replace('#', '');
+        }
+
         // Erstelle das NFC-Datenpaket mit korrekten Datentypen
         const nfcData = {
-            color_hex: selectedSpool.filament.color_hex || "FFFFFF",
+            color_hex: colorHex,
             type: selectedSpool.filament.material,
             min_temp: minTemp,
             max_temp: maxTemp,
