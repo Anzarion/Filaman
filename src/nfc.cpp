@@ -1169,10 +1169,19 @@ uint8_t ntag2xx_WriteNDEFWithStartPage(uint8_t startPage, const char *payload) {
   // MIME type for JSON
   const char mimeType[] = "application/json";
   uint8_t mimeTypeLen = strlen(mimeType);
-  
-  // Calculate NDEF record size
-  uint8_t ndefRecordHeaderSize = 3; // Header byte + Type Length + Payload Length (short record)
-  
+
+  // Determine if we need short or long record format
+  bool useShortRecord = (payloadLen <= 255);
+  uint8_t ndefRecordHeaderSize;
+
+  if (useShortRecord) {
+    // Short record: Header (1) + Type Length (1) + Payload Length (1) = 3 bytes
+    ndefRecordHeaderSize = 3;
+  } else {
+    // Long record: Header (1) + Type Length (1) + Payload Length (4) = 6 bytes
+    ndefRecordHeaderSize = 6;
+  }
+
   // Calculate total NDEF record size
   uint16_t ndefRecordSize = ndefRecordHeaderSize + mimeTypeLen + payloadLen;
 
@@ -1232,10 +1241,22 @@ uint8_t ntag2xx_WriteNDEFWithStartPage(uint8_t startPage, const char *payload) {
   }
 
   // NDEF Record Header
-  tlvData[offset++] = 0xD1;  // MB=1, SR=1, TNF=1 (WELL_KNOWN_TYPE)
-  tlvData[offset++] = mimeTypeLen;  // Type length
-  tlvData[offset++] = payloadLen;  // Payload length (short record)
-  
+  if (useShortRecord) {
+    // Short record format (SR=1)
+    tlvData[offset++] = 0xD1;  // MB=1, ME=1, SR=1, TNF=1 (WELL_KNOWN_TYPE)
+    tlvData[offset++] = mimeTypeLen;  // Type length
+    tlvData[offset++] = payloadLen;  // Payload length (1 byte)
+  } else {
+    // Long record format (SR=0)
+    tlvData[offset++] = 0xC1;  // MB=1, ME=1, SR=0, TNF=1 (WELL_KNOWN_TYPE)
+    tlvData[offset++] = mimeTypeLen;  // Type length
+    // Payload length (4 bytes, big-endian)
+    tlvData[offset++] = (payloadLen >> 24) & 0xFF;
+    tlvData[offset++] = (payloadLen >> 16) & 0xFF;
+    tlvData[offset++] = (payloadLen >> 8) & 0xFF;
+    tlvData[offset++] = payloadLen & 0xFF;
+  }
+
   // MIME type
   memcpy(&tlvData[offset], mimeType, mimeTypeLen);
   offset += mimeTypeLen;

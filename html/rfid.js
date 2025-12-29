@@ -624,9 +624,8 @@ function updateNfcData(data) {
                 colorBlocks += `<div style="background-color: #${color}; flex: 1;"></div>`;
             });
 
-            return `<div class="spool-icon ${isVertical ? 'vertical' : 'horizontal'}" style="
-                display: inline-flex;
-                ${isVertical ? 'flex-direction: column;' : 'flex-direction: row;'}
+            return `<span class="spool-icon ${isVertical ? 'vertical' : 'horizontal'}" style="
+                display: inline-block;
                 width: 20px;
                 height: 20px;
                 border: 1px solid #333;
@@ -634,7 +633,13 @@ function updateNfcData(data) {
                 margin-left: 5px;
                 vertical-align: middle;
                 overflow: hidden;
-            ">${colorBlocks}</div>`;
+                position: relative;
+            "><div style="
+                display: flex;
+                ${isVertical ? 'flex-direction: column;' : 'flex-direction: row;'}
+                width: 100%;
+                height: 100%;
+            ">${colorBlocks}</div></span>`;
         } else {
             // Single color display
             return `<span style="
