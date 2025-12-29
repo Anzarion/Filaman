@@ -654,8 +654,10 @@ function updateNfcData(data) {
 
     // Nur wenn eine sm_id vorhanden ist, aktualisiere die Dropdowns
     if (data.sm_id) {
-        const matchingSpool = spoolsData.find(spool => spool.id === parseInt(data.sm_id));
-        if (matchingSpool) {
+        const spoolsData = window.getSpoolData();
+        if (spoolsData && spoolsData.length > 0) {
+            const matchingSpool = spoolsData.find(spool => spool.id === parseInt(data.sm_id));
+            if (matchingSpool) {
             // Zuerst Hersteller-Dropdown aktualisieren
             document.getElementById("vendorSelect").value = matchingSpool.filament.vendor.id;
             
@@ -665,6 +667,7 @@ function updateNfcData(data) {
                 // Warte kurz bis das Dropdown aktualisiert wurde
                 selectFilament(matchingSpool);
             }, 100);
+            }
         }
     }
 
@@ -711,7 +714,8 @@ function writeNfcTag() {
             min_temp: minTemp,
             max_temp: maxTemp,
             brand: selectedSpool.filament.vendor.name,
-            sm_id: String(selectedSpool.id) // Konvertiere zu String
+            sm_id: String(selectedSpool.id), // Konvertiere zu String
+            sku: selectedSpool.filament.name || ""
         };
 
         if (socket?.readyState === WebSocket.OPEN) {

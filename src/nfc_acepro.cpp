@@ -811,6 +811,18 @@ void writeNfcTagBinaryTask(void* param) {
         ndefPayload["sku"] = aceData.sku;
         ndefPayload["brand"] = aceData.brand;
         ndefPayload["type"] = aceData.material;
+
+        // Convert ABGR color back to hex (format: RRGGBB without #)
+        char colorHex[7];
+        snprintf(colorHex, sizeof(colorHex), "%02X%02X%02X",
+                 aceData.colorABGR[3],  // Red
+                 aceData.colorABGR[2],  // Green
+                 aceData.colorABGR[1]); // Blue
+        ndefPayload["color_hex"] = colorHex;
+
+        // Add temperature ranges
+        ndefPayload["min_temp"] = String(aceData.nozzleTempMin);
+        ndefPayload["max_temp"] = String(aceData.nozzleTempMax);
         
         // Serialize to string
         String ndefPayloadStr;
