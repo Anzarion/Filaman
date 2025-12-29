@@ -621,7 +621,7 @@ function updateNfcData(data) {
             // Build multi-color display
             let colorBlocks = '';
             colors.forEach(color => {
-                colorBlocks += `<div style="background-color: #${color}; flex: 1; min-height: 0; min-width: 0;"></div>`;
+                colorBlocks += `<div style="background-color: #${color} !important; flex: 1;"></div>`;
             });
 
             return `<span class="spool-icon ${isVertical ? 'vertical' : 'horizontal'}" style="
@@ -639,6 +639,7 @@ function updateNfcData(data) {
                 ${isVertical ? 'flex-direction: column;' : 'flex-direction: row;'}
                 width: 100%;
                 height: 100%;
+                background-color: transparent;
             ">${colorBlocks}</div></span>`;
         } else {
             // Single color display
