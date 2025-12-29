@@ -611,16 +611,26 @@ function updateNfcData(data) {
         <div class="nfc-card-data" style="margin-top: 10px;">
             <p><strong>Brand:</strong> ${data.brand || 'N/A'}</p>
             <p><strong>Type:</strong> ${data.type || 'N/A'} ${data.color_hex ? `<span style="
-                background-color: #${data.color_hex}; 
-                width: 20px; 
-                height: 20px; 
-                display: inline-block; 
+                background-color: #${data.color_hex};
+                width: 20px;
+                height: 20px;
+                display: inline-block;
                 vertical-align: middle;
                 border: 1px solid #333;
                 border-radius: 3px;
                 margin-left: 5px;
             "></span>` : ''}</p>
         `;
+
+        // SKU anzeigen (wenn vorhanden)
+        if (data.sku) {
+            html += `<p><strong>SKU:</strong> ${data.sku}</p>`;
+        }
+
+        // Temperaturbereich anzeigen (wenn beide Werte vorhanden)
+        if (data.min_temp && data.max_temp) {
+            html += `<p><strong>Temperature Range:</strong> ${data.min_temp}°C - ${data.max_temp}°C</p>`;
+        }
 
         // Spoolman ID anzeigen
         html += `<p><strong>Spoolman ID:</strong> ${data.sm_id} (<a href="${spoolmanUrl}/spool/show/${data.sm_id}">Open in Spoolman</a>)</p>`;
