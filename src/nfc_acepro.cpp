@@ -867,7 +867,9 @@ void writeNfcTagBinaryTask(void* param) {
         // Add temperature ranges
         ndefPayload["min_temp"] = String(aceData.nozzleTempMin);
         ndefPayload["max_temp"] = String(aceData.nozzleTempMax);
-        
+        ndefPayload["bed_temp_min"] = String(aceData.bedTempMin);
+        ndefPayload["bed_temp_max"] = String(aceData.bedTempMax);
+
         // Serialize to string
         String ndefPayloadStr;
         serializeJson(ndefPayload, ndefPayloadStr);

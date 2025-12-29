@@ -627,9 +627,14 @@ function updateNfcData(data) {
             html += `<p><strong>SKU:</strong> ${data.sku}</p>`;
         }
 
-        // Temperaturbereich anzeigen (wenn beide Werte vorhanden)
+        // Düsentemperatur anzeigen (wenn beide Werte vorhanden)
         if (data.min_temp && data.max_temp) {
-            html += `<p><strong>Temperature Range:</strong> ${data.min_temp}°C - ${data.max_temp}°C</p>`;
+            html += `<p><strong>Nozzle Temperature:</strong> ${data.min_temp}°C - ${data.max_temp}°C</p>`;
+        }
+
+        // Betttemperatur anzeigen (wenn beide Werte vorhanden)
+        if (data.bed_temp_min && data.bed_temp_max) {
+            html += `<p><strong>Bed Temperature:</strong> ${data.bed_temp_min}°C - ${data.bed_temp_max}°C</p>`;
         }
 
         // Spoolman ID anzeigen
