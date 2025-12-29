@@ -606,11 +606,38 @@ function updateNfcData(data) {
     // HTML für die Datenanzeige erstellen
     let html = "";
 
-    if(data.sm_id){
-        html = `
-        <div class="nfc-card-data" style="margin-top: 10px;">
-            <p><strong>Brand:</strong> ${data.brand || 'N/A'}</p>
-            <p><strong>Type:</strong> ${data.type || 'N/A'} ${data.color_hex ? `<span style="
+    // Helper function to generate color display (single or multi-color)
+    function generateColorDisplay(data) {
+        if (!data.color_hex && !data.multi_color_hexes) {
+            return ''; // No color data
+        }
+
+        // Check if multi-color filament
+        if (data.multi_color_hexes) {
+            const colors = data.multi_color_hexes.split(',').map(c => c.trim());
+            const direction = data.multi_color_direction || 'coaxial'; // Default to coaxial
+            const isVertical = direction === 'longitudinal';
+
+            // Build multi-color display
+            let colorBlocks = '';
+            colors.forEach(color => {
+                colorBlocks += `<div style="background-color: #${color}; flex: 1;"></div>`;
+            });
+
+            return `<div class="spool-icon ${isVertical ? 'vertical' : 'horizontal'}" style="
+                display: inline-flex;
+                ${isVertical ? 'flex-direction: column;' : 'flex-direction: row;'}
+                width: 20px;
+                height: 20px;
+                border: 1px solid #333;
+                border-radius: 3px;
+                margin-left: 5px;
+                vertical-align: middle;
+                overflow: hidden;
+            ">${colorBlocks}</div>`;
+        } else {
+            // Single color display
+            return `<span style="
                 background-color: #${data.color_hex};
                 width: 20px;
                 height: 20px;
@@ -619,7 +646,17 @@ function updateNfcData(data) {
                 border: 1px solid #333;
                 border-radius: 3px;
                 margin-left: 5px;
-            "></span>` : ''}</p>
+            "></span>`;
+        }
+    }
+
+    if(data.sm_id){
+        const colorDisplay = generateColorDisplay(data);
+
+        html = `
+        <div class="nfc-card-data" style="margin-top: 10px;">
+            <p><strong>Brand:</strong> ${data.brand || 'N/A'}</p>
+            <p><strong>Type:</strong> ${data.type || 'N/A'} ${colorDisplay}</p>
         `;
 
         // SKU anzeigen (wenn vorhanden)
