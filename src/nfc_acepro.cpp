@@ -827,7 +827,7 @@ void writeNfcTagBinaryTask(void* param) {
     // This allows NDEF apps to read tag data without conflicting with ACE Pro format
     if (writeSuccess) {
         Serial.println("[ACEPro] Step 16: Writing NDEF at page 40 (hybrid format)...");
-        
+
         // Build NDEF payload with spoolman ID and basic tag info
         JsonDocument ndefPayload;
         ndefPayload["sm_id"] = aceData.spoolId;
@@ -835,13 +835,31 @@ void writeNfcTagBinaryTask(void* param) {
         ndefPayload["brand"] = aceData.brand;
         ndefPayload["type"] = aceData.material;
 
-        // Convert ABGR color back to hex (format: RRGGBB without #)
-        char colorHex[7];
-        snprintf(colorHex, sizeof(colorHex), "%02X%02X%02X",
-                 aceData.colorABGR[3],  // Red
-                 aceData.colorABGR[2],  // Green
-                 aceData.colorABGR[1]); // Blue
-        ndefPayload["color_hex"] = colorHex;
+        // NDEF can store multi-color info (unlike binary format which only stores first color)
+        // Check if multi_color_hexes exists in original Spoolman data
+        if (obj["filament"]["multi_color_hexes"].is<const char*>()) {
+            // Multi-color filament: Store original multi_color_hexes
+            String multiColors = String(obj["filament"]["multi_color_hexes"]);
+            ndefPayload["multi_color_hexes"] = multiColors;
+            ndefPayload["multi_color_direction"] = String(obj["filament"]["multi_color_direction"] | "coaxial");
+            Serial.printf("[ACEPro] NDEF: Storing multi-color info: %s\n", multiColors.c_str());
+
+            // Also store first color as color_hex for compatibility
+            int commaIndex = multiColors.indexOf(',');
+            if (commaIndex > 0) {
+                ndefPayload["color_hex"] = multiColors.substring(0, commaIndex);
+            } else {
+                ndefPayload["color_hex"] = multiColors;
+            }
+        } else {
+            // Single color: Convert ABGR back to hex (format: RRGGBB without #)
+            char colorHex[7];
+            snprintf(colorHex, sizeof(colorHex), "%02X%02X%02X",
+                     aceData.colorABGR[3],  // Red
+                     aceData.colorABGR[2],  // Green
+                     aceData.colorABGR[1]); // Blue
+            ndefPayload["color_hex"] = colorHex;
+        }
 
         // Add temperature ranges
         ndefPayload["min_temp"] = String(aceData.nozzleTempMin);
