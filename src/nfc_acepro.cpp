@@ -211,7 +211,8 @@ uint32_t getColor(const JsonObject& spoolData) {
 
     // First try multi_color_hexes (for multi-color filaments)
     if (spoolData["filament"]["multi_color_hexes"].is<const char*>()) {
-        String multiColors = String(spoolData["filament"]["multi_color_hexes"]);
+        const char* multiColorsPtr = spoolData["filament"]["multi_color_hexes"];
+        String multiColors = String(multiColorsPtr);
 
         // Extract first color (before comma)
         int commaIndex = multiColors.indexOf(',');
@@ -224,7 +225,8 @@ uint32_t getColor(const JsonObject& spoolData) {
     }
     // Fallback to single color_hex
     else if (spoolData["filament"]["color_hex"].is<const char*>()) {
-        colorHex = String(spoolData["filament"]["color_hex"]);
+        const char* colorHexPtr = spoolData["filament"]["color_hex"];
+        colorHex = String(colorHexPtr);
     }
     // Default fallback
     else {
@@ -839,7 +841,8 @@ void writeNfcTagBinaryTask(void* param) {
         // Check if multi_color_hexes exists in original Spoolman data
         if (obj["filament"]["multi_color_hexes"].is<const char*>()) {
             // Multi-color filament: Store original multi_color_hexes
-            String multiColors = String(obj["filament"]["multi_color_hexes"]);
+            const char* multiColorsPtr = obj["filament"]["multi_color_hexes"];
+            String multiColors = String(multiColorsPtr);
             ndefPayload["multi_color_hexes"] = multiColors;
             ndefPayload["multi_color_direction"] = String(obj["filament"]["multi_color_direction"] | "coaxial");
             Serial.printf("[ACEPro] NDEF: Storing multi-color info: %s\n", multiColors.c_str());
