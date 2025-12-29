@@ -86,6 +86,8 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
         filteredDoc["filament"]["vendor"]["name"] = brand;
         
         // Color (hex) - supports both single and multi-color
+        String colorHex = "FFFFFF";  // Default white
+
         // Check for multi_color_hexes first (multi-color filaments)
         if (doc["filament"]["multi_color_hexes"].is<const char*>()) {
             const char* multiColorsPtr = doc["filament"]["multi_color_hexes"];
@@ -93,6 +95,14 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
             multiColors.toUpperCase();
             Serial.printf("[API] Extracted multi-color: %s\n", multiColors.c_str());
             filteredDoc["filament"]["multi_color_hexes"] = multiColors;
+
+            // Extract first color for backward compatibility
+            int commaIndex = multiColors.indexOf(',');
+            if (commaIndex > 0) {
+                colorHex = multiColors.substring(0, commaIndex);
+            } else {
+                colorHex = multiColors;
+            }
 
             // Also copy direction if present
             if (doc["filament"]["multi_color_direction"].is<const char*>()) {
@@ -102,15 +112,16 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
         // Fallback to single color_hex
         else if (doc["filament"]["color_hex"].is<const char*>()) {
             const char* colorHexPtr = doc["filament"]["color_hex"];
-            String colorHex = String(colorHexPtr);
+            colorHex = String(colorHexPtr);
             colorHex.toUpperCase();
             Serial.printf("[API] Extracted color: %s\n", colorHex.c_str());
-            filteredDoc["filament"]["color_hex"] = colorHex;
         }
         else {
             Serial.println("[API] Extracted color: NULL");
-            filteredDoc["filament"]["color_hex"] = "FFFFFF";  // Default white
         }
+
+        // Store color_hex (either from multi_color first color or single color or default)
+        filteredDoc["filament"]["color_hex"] = colorHex;
         
         // ===== TEMPERATURE SETTINGS =====
         // Nozzle temperatures
