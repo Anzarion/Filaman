@@ -124,22 +124,51 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
         filteredDoc["filament"]["color_hex"] = colorHex;
         
         // ===== TEMPERATURE SETTINGS =====
-        // Nozzle temperatures
-        int nozzleTempMin = doc["filament"]["nozzle_temp_min"] | 200;
-        int nozzleTempMax = doc["filament"]["nozzle_temp_max"] | 230;
-        Serial.printf("[API] Extracted nozzle temps: %d-%d°C\n", nozzleTempMin, nozzleTempMax);
+        // Nozzle temperatures - parse from extra.nozzle_temperature first
+        int nozzleTempMin = 200;  // Default
+        int nozzleTempMax = 230;  // Default
+
+        if (doc["filament"]["extra"]["nozzle_temperature"].is<const char*>()) {
+            const char* tempStringPtr = doc["filament"]["extra"]["nozzle_temperature"];
+            String tempString = String(tempStringPtr);
+            Serial.printf("[API] Found extra.nozzle_temperature: %s\n", tempString.c_str());
+
+            // Parse "[190,210]" format
+            tempString.replace("[", "");
+            tempString.replace("]", "");
+            tempString.replace("\"", "");
+            tempString.trim();
+
+            int commaIndex = tempString.indexOf(',');
+            if (commaIndex > 0) {
+                nozzleTempMin = tempString.substring(0, commaIndex).toInt();
+                nozzleTempMax = tempString.substring(commaIndex + 1).toInt();
+                Serial.printf("[API] Parsed nozzle temps from extra: %d-%d°C\n", nozzleTempMin, nozzleTempMax);
+            }
+        } else if (doc["filament"]["settings_extruder_temp"].is<int>()) {
+            // Fallback to single value - use ±10°C range
+            int temp = doc["filament"]["settings_extruder_temp"];
+            nozzleTempMin = temp - 10;
+            nozzleTempMax = temp + 10;
+            Serial.printf("[API] Using settings_extruder_temp: %d°C (range %d-%d°C)\n", temp, nozzleTempMin, nozzleTempMax);
+        } else {
+            Serial.printf("[API] No nozzle temps in Spoolman, using defaults: %d-%d°C\n", nozzleTempMin, nozzleTempMax);
+        }
+
         filteredDoc["filament"]["nozzle_temp_min"] = nozzleTempMin;
         filteredDoc["filament"]["nozzle_temp_max"] = nozzleTempMax;
         
-        // Bed temperatures (optional)
-        if (doc["filament"]["bed_temp_min"].is<int>()) {
-            int bedTempMin = doc["filament"]["bed_temp_min"];
-            int bedTempMax = doc["filament"]["bed_temp_max"];
-            Serial.printf("[API] Extracted bed temps: %d-%d°C\n", bedTempMin, bedTempMax);
+        // Bed temperatures - check settings_bed_temp
+        if (doc["filament"]["settings_bed_temp"].is<int>()) {
+            int bedTemp = doc["filament"]["settings_bed_temp"];
+            // Use ±5°C range for bed temp
+            int bedTempMin = bedTemp - 5;
+            int bedTempMax = bedTemp + 5;
+            Serial.printf("[API] Using settings_bed_temp: %d°C (range %d-%d°C)\n", bedTemp, bedTempMin, bedTempMax);
             filteredDoc["filament"]["bed_temp_min"] = bedTempMin;
             filteredDoc["filament"]["bed_temp_max"] = bedTempMax;
         } else {
-            Serial.println("[API] No bed temps in Spoolman, will use defaults");
+            Serial.println("[API] No bed temp in Spoolman, will use material-based defaults");
         }
         
         // ===== FILAMENT PHYSICAL PROPERTIES =====
@@ -154,14 +183,6 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
         filteredDoc["remaining_weight"] = remainingWeight;
         
         // ===== BAMBU-SPECIFIC FIELDS (optional, kept for compatibility) =====
-        // Nozzle temperature string from extra field (for Bambu)
-        if (doc["filament"]["extra"]["nozzle_temperature"].is<String>()) {
-            String tempString = doc["filament"]["extra"]["nozzle_temperature"].as<String>();
-            tempString.replace("[", "");
-            tempString.replace("]", "");
-            filteredDoc["filament"]["extra"]["nozzle_temperature"] = tempString;
-        }
-        
         // Bambu indices
         if (doc["filament"]["extra"]["bambu_idx"].is<String>()) {
             String bambuIdx = doc["filament"]["extra"]["bambu_idx"].as<String>();
