@@ -85,11 +85,32 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
         Serial.printf("[API] Extracted vendor/brand: %s\n", brand.c_str());
         filteredDoc["filament"]["vendor"]["name"] = brand;
         
-        // Color (hex)
-        String colorHex = doc["filament"]["color_hex"].as<String>();
-        colorHex.toUpperCase();
-        Serial.printf("[API] Extracted color: %s\n", colorHex.c_str());
-        filteredDoc["filament"]["color_hex"] = colorHex;
+        // Color (hex) - supports both single and multi-color
+        // Check for multi_color_hexes first (multi-color filaments)
+        if (doc["filament"]["multi_color_hexes"].is<const char*>()) {
+            const char* multiColorsPtr = doc["filament"]["multi_color_hexes"];
+            String multiColors = String(multiColorsPtr);
+            multiColors.toUpperCase();
+            Serial.printf("[API] Extracted multi-color: %s\n", multiColors.c_str());
+            filteredDoc["filament"]["multi_color_hexes"] = multiColors;
+
+            // Also copy direction if present
+            if (doc["filament"]["multi_color_direction"].is<const char*>()) {
+                filteredDoc["filament"]["multi_color_direction"] = String(doc["filament"]["multi_color_direction"].as<const char*>());
+            }
+        }
+        // Fallback to single color_hex
+        else if (doc["filament"]["color_hex"].is<const char*>()) {
+            const char* colorHexPtr = doc["filament"]["color_hex"];
+            String colorHex = String(colorHexPtr);
+            colorHex.toUpperCase();
+            Serial.printf("[API] Extracted color: %s\n", colorHex.c_str());
+            filteredDoc["filament"]["color_hex"] = colorHex;
+        }
+        else {
+            Serial.println("[API] Extracted color: NULL");
+            filteredDoc["filament"]["color_hex"] = "FFFFFF";  // Default white
+        }
         
         // ===== TEMPERATURE SETTINGS =====
         // Nozzle temperatures
