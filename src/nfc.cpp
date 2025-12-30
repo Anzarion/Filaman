@@ -1169,18 +1169,40 @@ uint8_t ntag2xx_WriteNDEFWithStartPage(uint8_t startPage, const char *payload) {
   // MIME type for JSON
   const char mimeType[] = "application/json";
   uint8_t mimeTypeLen = strlen(mimeType);
-  
-  // Calculate NDEF record size
-  uint8_t ndefRecordHeaderSize = 3; // Header byte + Type Length + Payload Length (short record)
-  
+
+  // Determine if we need short or long record format
+  bool useShortRecord = (payloadLen <= 255);
+  uint8_t ndefRecordHeaderSize;
+
+  if (useShortRecord) {
+    // Short record: Header (1) + Type Length (1) + Payload Length (1) = 3 bytes
+    ndefRecordHeaderSize = 3;
+  } else {
+    // Long record: Header (1) + Type Length (1) + Payload Length (4) = 6 bytes
+    ndefRecordHeaderSize = 6;
+  }
+
   // Calculate total NDEF record size
   uint16_t ndefRecordSize = ndefRecordHeaderSize + mimeTypeLen + payloadLen;
-  
-  // Calculate TLV size (T: 1 byte, L: 1 byte = 2 bytes header, then record data)
-  uint16_t tlvSize = 2 + ndefRecordSize + 1; // +1 for terminator TLV
-  
+
+  // Calculate TLV size - need to check if we need extended length format
+  uint8_t tlvHeaderSize;
+  uint16_t tlvSize;
+
+  if (ndefRecordSize <= 254) {
+    // Standard TLV format: Tag (1) + Length (1) + Value (ndefRecordSize)
+    tlvHeaderSize = 2;
+    tlvSize = tlvHeaderSize + ndefRecordSize + 1; // +1 for terminator TLV
+  } else {
+    // Extended TLV format: Tag (1) + 0xFF + Length (2) + Value (ndefRecordSize)
+    tlvHeaderSize = 4;
+    tlvSize = tlvHeaderSize + ndefRecordSize + 1; // +1 for terminator TLV
+  }
+
   Serial.print("[NDEF-Wrapper] NDEF Record Size: ");
   Serial.println(ndefRecordSize);
+  Serial.print("[NDEF-Wrapper] TLV Header Size: ");
+  Serial.println(tlvHeaderSize);
   Serial.print("[NDEF-Wrapper] Total TLV Size: ");
   Serial.println(tlvSize);
   
@@ -1203,16 +1225,38 @@ uint8_t ntag2xx_WriteNDEFWithStartPage(uint8_t startPage, const char *payload) {
 
   // Build TLV structure in memory first
   uint16_t offset = 0;
-  
+
   // TLV: NDEF Message Container (0x03)
   tlvData[offset++] = 0x03;  // NDEF Message TLV type
-  tlvData[offset++] = ndefRecordSize;  // Length of NDEF record
-  
+
+  // Write length in appropriate format
+  if (ndefRecordSize <= 254) {
+    // Standard format: 1-byte length
+    tlvData[offset++] = ndefRecordSize;
+  } else {
+    // Extended format: 0xFF + 2-byte length (big-endian)
+    tlvData[offset++] = 0xFF;
+    tlvData[offset++] = (ndefRecordSize >> 8) & 0xFF;  // High byte
+    tlvData[offset++] = ndefRecordSize & 0xFF;         // Low byte
+  }
+
   // NDEF Record Header
-  tlvData[offset++] = 0xD1;  // MB=1, SR=1, TNF=1 (WELL_KNOWN_TYPE)
-  tlvData[offset++] = mimeTypeLen;  // Type length
-  tlvData[offset++] = payloadLen;  // Payload length (short record)
-  
+  if (useShortRecord) {
+    // Short record format (SR=1)
+    tlvData[offset++] = 0xD1;  // MB=1, ME=1, SR=1, TNF=1 (WELL_KNOWN_TYPE)
+    tlvData[offset++] = mimeTypeLen;  // Type length
+    tlvData[offset++] = payloadLen;  // Payload length (1 byte)
+  } else {
+    // Long record format (SR=0)
+    tlvData[offset++] = 0xC1;  // MB=1, ME=1, SR=0, TNF=1 (WELL_KNOWN_TYPE)
+    tlvData[offset++] = mimeTypeLen;  // Type length
+    // Payload length (4 bytes, big-endian)
+    tlvData[offset++] = (payloadLen >> 24) & 0xFF;
+    tlvData[offset++] = (payloadLen >> 16) & 0xFF;
+    tlvData[offset++] = (payloadLen >> 8) & 0xFF;
+    tlvData[offset++] = payloadLen & 0xFF;
+  }
+
   // MIME type
   memcpy(&tlvData[offset], mimeType, mimeTypeLen);
   offset += mimeTypeLen;

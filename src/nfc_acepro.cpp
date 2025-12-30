@@ -202,20 +202,45 @@ ColorValidation validateColorHex(const String& hexColor) {
 
 /**
  * Convert RGB hex from Spoolman to ABGR format for ACE Pro
- * Input:  "#FF5533" (RGB hex)
+ * Input:  "#FF5533" (RGB hex) or multi_color_hexes "FF5533,AABBCC"
  * Output: 0xFF3357FF (ABGR uint32_t)
- * Note: Now uses validateColorHex() internally for robustness
+ * Note: Now supports both color_hex and multi_color_hexes
  */
 uint32_t getColor(const JsonObject& spoolData) {
-    String colorHex = String(spoolData["filament"]["color_hex"] | "#FFFFFF");
-    
+    String colorHex;
+
+    // First try multi_color_hexes (for multi-color filaments)
+    if (spoolData["filament"]["multi_color_hexes"].is<const char*>()) {
+        const char* multiColorsPtr = spoolData["filament"]["multi_color_hexes"];
+        String multiColors = String(multiColorsPtr);
+
+        // Extract first color (before comma)
+        int commaIndex = multiColors.indexOf(',');
+        if (commaIndex > 0) {
+            colorHex = multiColors.substring(0, commaIndex);
+            Serial.printf("[ACEPro] Multi-color filament detected, using first color: %s\n", colorHex.c_str());
+        } else {
+            colorHex = multiColors;
+        }
+    }
+    // Fallback to single color_hex
+    else if (spoolData["filament"]["color_hex"].is<const char*>()) {
+        const char* colorHexPtr = spoolData["filament"]["color_hex"];
+        colorHex = String(colorHexPtr);
+    }
+    // Default fallback
+    else {
+        colorHex = "#FFFFFF";
+        Serial.println("[ACEPro] No color found in Spoolman, using white fallback");
+    }
+
     // Use validation function
     ColorValidation validation = validateColorHex(colorHex);
-    
+
     if (validation.isValid) {
         return validation.colorABGR;
     }
-    
+
     // Fallback to white if validation fails
     Serial.printf("[ACEPro] Color validation failed, using white fallback\n");
     return 0xFFFFFFFF;  // White in ABGR
@@ -804,14 +829,47 @@ void writeNfcTagBinaryTask(void* param) {
     // This allows NDEF apps to read tag data without conflicting with ACE Pro format
     if (writeSuccess) {
         Serial.println("[ACEPro] Step 16: Writing NDEF at page 40 (hybrid format)...");
-        
+
         // Build NDEF payload with spoolman ID and basic tag info
         JsonDocument ndefPayload;
         ndefPayload["sm_id"] = aceData.spoolId;
         ndefPayload["sku"] = aceData.sku;
         ndefPayload["brand"] = aceData.brand;
         ndefPayload["type"] = aceData.material;
-        
+
+        // NDEF can store multi-color info (unlike binary format which only stores first color)
+        // Check if multi_color_hexes exists in original Spoolman data
+        if (obj["filament"]["multi_color_hexes"].is<const char*>()) {
+            // Multi-color filament: Store original multi_color_hexes
+            const char* multiColorsPtr = obj["filament"]["multi_color_hexes"];
+            String multiColors = String(multiColorsPtr);
+            ndefPayload["multi_color_hexes"] = multiColors;
+            ndefPayload["multi_color_direction"] = String(obj["filament"]["multi_color_direction"] | "coaxial");
+            Serial.printf("[ACEPro] NDEF: Storing multi-color info: %s\n", multiColors.c_str());
+
+            // Also store first color as color_hex for compatibility
+            int commaIndex = multiColors.indexOf(',');
+            if (commaIndex > 0) {
+                ndefPayload["color_hex"] = multiColors.substring(0, commaIndex);
+            } else {
+                ndefPayload["color_hex"] = multiColors;
+            }
+        } else {
+            // Single color: Convert ABGR back to hex (format: RRGGBB without #)
+            char colorHex[7];
+            snprintf(colorHex, sizeof(colorHex), "%02X%02X%02X",
+                     aceData.colorABGR[3],  // Red
+                     aceData.colorABGR[2],  // Green
+                     aceData.colorABGR[1]); // Blue
+            ndefPayload["color_hex"] = colorHex;
+        }
+
+        // Add temperature ranges
+        ndefPayload["min_temp"] = String(aceData.nozzleTempMin);
+        ndefPayload["max_temp"] = String(aceData.nozzleTempMax);
+        ndefPayload["bed_temp_min"] = String(aceData.bedTempMin);
+        ndefPayload["bed_temp_max"] = String(aceData.bedTempMax);
+
         // Serialize to string
         String ndefPayloadStr;
         serializeJson(ndefPayload, ndefPayloadStr);

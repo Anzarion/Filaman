@@ -606,24 +606,90 @@ function updateNfcData(data) {
     // HTML für die Datenanzeige erstellen
     let html = "";
 
+    // Helper function to generate large color display for right column
+    function generateLargeColorDisplay(data) {
+        if (!data.color_hex && !data.multi_color_hexes) {
+            return ''; // No color data
+        }
+
+        // Check if multi-color filament
+        if (data.multi_color_hexes) {
+            const colors = data.multi_color_hexes.split(',').map(c => c.trim());
+            const direction = data.multi_color_direction || 'coaxial'; // Default to coaxial
+            const isVertical = direction === 'longitudinal';
+
+            // Build multi-color display - larger size for better visibility
+            let colorBlocks = '';
+            colors.forEach(color => {
+                colorBlocks += `<div style="background-color: #${color}; flex: 1;"></div>`;
+            });
+
+            // Vertical (longitudinal): tall and narrow
+            // Horizontal (coaxial): wide and short
+            const width = isVertical ? '60px' : '80px';
+            const height = isVertical ? '120px' : '80px';
+
+            return `<div class="spool-color-large" style="
+                display: flex;
+                ${isVertical ? 'flex-direction: column;' : 'flex-direction: row;'}
+                width: ${width};
+                height: ${height};
+                border: 2px solid #333;
+                border-radius: 5px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            ">${colorBlocks}</div>`;
+        } else {
+            // Single color display - large rectangle
+            return `<div style="
+                background-color: #${data.color_hex};
+                width: 80px;
+                height: 100px;
+                border: 2px solid #333;
+                border-radius: 5px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            "></div>`;
+        }
+    }
+
     if(data.sm_id){
-        html = `
-        <div class="nfc-card-data" style="margin-top: 10px;">
+        const largeColorDisplay = generateLargeColorDisplay(data);
+
+        // Build data column HTML
+        let dataColumn = `
             <p><strong>Brand:</strong> ${data.brand || 'N/A'}</p>
-            <p><strong>Type:</strong> ${data.type || 'N/A'} ${data.color_hex ? `<span style="
-                background-color: #${data.color_hex}; 
-                width: 20px; 
-                height: 20px; 
-                display: inline-block; 
-                vertical-align: middle;
-                border: 1px solid #333;
-                border-radius: 3px;
-                margin-left: 5px;
-            "></span>` : ''}</p>
+            <p><strong>Type:</strong> ${data.type || 'N/A'}</p>
         `;
 
+        // SKU anzeigen (wenn vorhanden)
+        if (data.sku) {
+            dataColumn += `<p><strong>SKU:</strong> ${data.sku}</p>`;
+        }
+
+        // Düsentemperatur anzeigen (wenn beide Werte vorhanden)
+        if (data.min_temp && data.max_temp) {
+            dataColumn += `<p><strong>Nozzle Temperature:</strong> ${data.min_temp}°C - ${data.max_temp}°C</p>`;
+        }
+
+        // Betttemperatur anzeigen (wenn beide Werte vorhanden)
+        if (data.bed_temp_min && data.bed_temp_max) {
+            dataColumn += `<p><strong>Bed Temperature:</strong> ${data.bed_temp_min}°C - ${data.bed_temp_max}°C</p>`;
+        }
+
         // Spoolman ID anzeigen
-        html += `<p><strong>Spoolman ID:</strong> ${data.sm_id} (<a href="${spoolmanUrl}/spool/show/${data.sm_id}">Open in Spoolman</a>)</p>`;
+        dataColumn += `<p><strong>Spoolman ID:</strong> ${data.sm_id} (<a href="${spoolmanUrl}/spool/show/${data.sm_id}">Open in Spoolman</a>)</p>`;
+
+        // Build 2-column layout
+        html = `
+        <div class="nfc-card-data" style="margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center;">
+            <div class="data-column">
+                ${dataColumn}
+            </div>
+            <div class="color-column">
+                ${largeColorDisplay}
+            </div>
+        </div>
+        `;
      }
      else if(data.location)
      {
@@ -644,8 +710,10 @@ function updateNfcData(data) {
 
     // Nur wenn eine sm_id vorhanden ist, aktualisiere die Dropdowns
     if (data.sm_id) {
-        const matchingSpool = spoolsData.find(spool => spool.id === parseInt(data.sm_id));
-        if (matchingSpool) {
+        const spoolsData = window.getSpoolData();
+        if (spoolsData && spoolsData.length > 0) {
+            const matchingSpool = spoolsData.find(spool => spool.id === parseInt(data.sm_id));
+            if (matchingSpool) {
             // Zuerst Hersteller-Dropdown aktualisieren
             document.getElementById("vendorSelect").value = matchingSpool.filament.vendor.id;
             
@@ -655,6 +723,7 @@ function updateNfcData(data) {
                 // Warte kurz bis das Dropdown aktualisiert wurde
                 selectFilament(matchingSpool);
             }, 100);
+            }
         }
     }
 
@@ -687,21 +756,32 @@ function writeNfcTag() {
         // Temperaturwerte korrekt extrahieren
         let minTemp = "175";
         let maxTemp = "275";
-        
-        if (Array.isArray(selectedSpool.filament.nozzle_temperature) && 
+
+        if (Array.isArray(selectedSpool.filament.nozzle_temperature) &&
             selectedSpool.filament.nozzle_temperature.length >= 2) {
             minTemp = String(selectedSpool.filament.nozzle_temperature[0]);
             maxTemp = String(selectedSpool.filament.nozzle_temperature[1]);
         }
 
+        // Farbe extrahieren (unterstützt sowohl color_hex als auch multi_color_hexes)
+        let colorHex = "FFFFFF";
+        if (selectedSpool.filament.multi_color_hexes) {
+            // Multi-color: Nimm erste Farbe
+            const colors = selectedSpool.filament.multi_color_hexes.split(',');
+            colorHex = colors[0].trim().replace('#', '');
+        } else if (selectedSpool.filament.color_hex) {
+            colorHex = selectedSpool.filament.color_hex.replace('#', '');
+        }
+
         // Erstelle das NFC-Datenpaket mit korrekten Datentypen
         const nfcData = {
-            color_hex: selectedSpool.filament.color_hex || "FFFFFF",
+            color_hex: colorHex,
             type: selectedSpool.filament.material,
             min_temp: minTemp,
             max_temp: maxTemp,
             brand: selectedSpool.filament.vendor.name,
-            sm_id: String(selectedSpool.id) // Konvertiere zu String
+            sm_id: String(selectedSpool.id), // Konvertiere zu String
+            sku: selectedSpool.filament.name || ""
         };
 
         if (socket?.readyState === WebSocket.OPEN) {
