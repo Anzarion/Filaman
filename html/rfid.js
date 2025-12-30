@@ -681,11 +681,11 @@ function updateNfcData(data) {
 
         // Build 2-column layout
         html = `
-        <div class="nfc-card-data" style="margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: start;">
+        <div class="nfc-card-data" style="margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center;">
             <div class="data-column">
                 ${dataColumn}
             </div>
-            <div class="color-column" style="display: flex; align-items: center; justify-content: center;">
+            <div class="color-column">
                 ${largeColorDisplay}
             </div>
         </div>
