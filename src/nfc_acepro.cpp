@@ -11,6 +11,7 @@ extern volatile nfcReaderStateType nfcReaderState;
 
 // Forward declaration for web interface updates
 void sendNfcData();
+void sendWriteResult(AsyncWebSocketClient *client, uint8_t success);
 
 // ===== Helper Functions =====
 
@@ -901,7 +902,8 @@ void writeNfcTagBinaryTask(void* param) {
         Serial.println("[ACEPro] ✗ Tag write FAILED");
         nfcReaderState = NFC_WRITE_ERROR;
     }
-    
+
+    sendWriteResult(nullptr, writeSuccess);  // Send write result to web interface
     sendNfcData();  // Update web interface
     
     // Stabilize NFC interface
