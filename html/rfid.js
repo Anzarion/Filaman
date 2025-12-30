@@ -656,7 +656,7 @@ function updateNfcData(data) {
         html = `
         <div class="nfc-card-data" style="margin-top: 10px;">
             <p><strong>Brand:</strong> ${data.brand || 'N/A'}</p>
-            <p><strong>Type:</strong> ${data.type || 'N/A'} ${colorDisplay}</p>
+            <div style="margin: 0;"><strong>Type:</strong> ${data.type || 'N/A'} ${colorDisplay}</div>
         `;
 
         // SKU anzeigen (wenn vorhanden)
