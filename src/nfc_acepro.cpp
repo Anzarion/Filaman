@@ -8,6 +8,7 @@
 extern Adafruit_PN532 nfc;
 extern volatile bool nfcWriteInProgress;
 extern volatile nfcReaderStateType nfcReaderState;
+extern volatile bool pauseBambuMqttTask;
 
 // Forward declaration for web interface updates
 void sendNfcData();
@@ -607,8 +608,9 @@ void writeNfcTagBinaryTask(void* param) {
     
     Serial.printf("[ACEPro] Write task started for spool ID: %d\n", spoolId);
     sendNfcData();  // Update web interface
-    
+
     nfcWriteInProgress = true;
+    pauseBambuMqttTask = true;  // Pause MQTT to prevent interference during NFC write
     nfcReaderState = NFC_WRITING;
     
     // Step 1: Fetch Spoolman data
@@ -619,6 +621,7 @@ void writeNfcTagBinaryTask(void* param) {
         Serial.println("[ACEPro] Failed to fetch spool data from Spoolman");
         nfcReaderState = NFC_WRITE_ERROR;
         nfcWriteInProgress = false;
+        pauseBambuMqttTask = false;
         vTaskDelete(NULL);
         return;
     }
@@ -631,6 +634,7 @@ void writeNfcTagBinaryTask(void* param) {
         Serial.println("[ACEPro] Failed to extract data");
         nfcReaderState = NFC_WRITE_ERROR;
         nfcWriteInProgress = false;
+        pauseBambuMqttTask = false;
         vTaskDelete(NULL);
         return;
     }
@@ -644,6 +648,7 @@ void writeNfcTagBinaryTask(void* param) {
         Serial.println("[ACEPro] No tag detected");
         nfcReaderState = NFC_WRITE_ERROR;
         nfcWriteInProgress = false;
+        pauseBambuMqttTask = false;
         vTaskDelete(NULL);
         return;
     }
@@ -905,14 +910,15 @@ void writeNfcTagBinaryTask(void* param) {
 
     sendWriteResult(nullptr, writeSuccess);  // Send write result to web interface
     sendNfcData();  // Update web interface
-    
+
     // Stabilize NFC interface
     delay(200);
-    
+
     // Cleanup
     nfcWriteInProgress = false;
+    pauseBambuMqttTask = false;  // Resume MQTT task
     nfcReaderState = NFC_IDLE;
-    
+
     Serial.println("[ACEPro] Write task completed");
     vTaskDelete(NULL);
 }
