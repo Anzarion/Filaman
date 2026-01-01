@@ -1,5 +1,55 @@
 # Changelog
 
+## [2.1.0] - 2026-01-01
+### Added
+- Pause Bambu MQTT task during ACE Pro binary NFC write
+- Add missing web feedback for ACE Pro binary NFC write
+- Update README files to reflect enhanced fork features
+- Expand NFC tag display with multi-color support and comprehensive data fields
+- Remove left padding, keep right padding on nfc-card-data
+- Add symmetric padding to nfc-card-data container
+- Add right padding to prevent color display edge clipping
+- Add 2-column layout with large color display
+- Add multi-color filament display support
+- Add bed temperature display to web interface
+- Store full multi-color data in NDEF format
+- Add support for multi-color filaments
+- Add cache buster to force JavaScript reload
+- Add SKU and temperature range to NFC tag display
+- merge: Combine ACE Pro and Print-Cost Calculator features without data loss
+- Add flat structure to fetchSingleSpoolInfo for backward compatibility with print-cost-calculator
+- Add EnderPy-inspired validation enhancements
+- Add three reference-based enhancements
+- ACE Pro hybrid format + Spoolman integration working
+
+### Changed
+- Merge pull request #8 from Anzarion/claude/nfc-pause-mqtt-HIt8R
+- Merge pull request #7 from Anzarion/claude/nfc-write-feedback-HIt8R
+- Merge pull request #5 from Anzarion/claude/review-zencoder-files-YndJh
+- Consolidate .zencoder documentation into official docs
+- Merge pull request #4 from Anzarion/claude/update-readme-sync-DfZwU
+- Merge pull request #2 from Anzarion/claude/nfc-tag-data-investigation-CXkn0
+- Separate Brand+Material validation for fallback matching
+- improve: Increase scale calibration timing to 10s for weight setup/removal
+
+### Fixed
+- Center color display vertically in grid layout
+- Change Type container from <p> to <div> for proper nesting
+- Revert to original multi-color display structure
+- Fix multi-color display background color inheritance
+- Fix multi-color display background color inheritance
+- Support NDEF long record format for payloads >255 bytes
+- Support extended NDEF TLV format for payloads >254 bytes
+- Extract correct temperature fields from Spoolman API
+- Resolve colorHex scope error in api.cpp
+- Extract multi_color_hexes from Spoolman API
+- Resolve ArduinoJson String constructor ambiguity
+- Complete NFC tag display and write implementation
+- Fix Fast-Path to read correct pages for ACE Pro tags
+- Merge pull request #1 from Anzarion/claude/material-type-fix-m7nkt
+- Change NDEF field from "material" to "type" for web interface
+
+
 ## [2.0.10] - 2025-10-15
 ### Fixed
 - fix typo
