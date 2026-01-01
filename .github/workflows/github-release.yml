@@ -51,7 +51,8 @@ jobs:
         cp .pio/build/esp32dev/littlefs.bin .pio/build/esp32dev/upgrade_filaman_website_v${VERSION}.bin
         
         # Create full binary (always)
-        (cd .pio/build/esp32dev && 
+        cd .pio/build/esp32dev
+        echo "Creating full binary with esptool.py..."
         esptool.py --chip esp32 merge_bin \
           --fill-flash-size 4MB \
           --flash_mode dio \
@@ -61,11 +62,19 @@ jobs:
           0x1000 bootloader.bin \
           0x8000 partitions.bin \
           0x10000 firmware.bin \
-          0x3D0000 littlefs.bin)
-        
+          0x3D0000 littlefs.bin
+
         # Verify file sizes
         echo "File sizes:"
-        (cd .pio/build/esp32dev && ls -lh *.bin)
+        ls -lh *.bin
+
+        # Verify full binary was created
+        if [ ! -f "filaman_full_${VERSION}.bin" ]; then
+          echo "Error: Full binary was not created!"
+          exit 1
+        fi
+
+        cd ../../..
     
     - name: Get version from platformio.ini
       id: get_version
@@ -76,45 +85,28 @@ jobs:
     - name: Generate Release Notes
       id: release_notes
       run: |
-        # Get the latest tag
-        LATEST_TAG=$(git for-each-ref --sort=-creatordate --format '%(refname:short)' refs/tags | sed -n '2p')
-        
-        if [ -n "$LATEST_TAG" ]; then
-          echo "CHANGES<<EOF" >> $GITHUB_OUTPUT
-          echo "Changes since ${LATEST_TAG}:" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          
-          # Get all commits since last release with commit hash and author
-          echo "### Added" >> $GITHUB_OUTPUT
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%h - %s (%an)" | grep -iE '^[a-f0-9]+ - (feat|add|new)' | sed 's/^[a-f0-9]* - feat: /- /' >> $GITHUB_OUTPUT || true
-          echo "" >> $GITHUB_OUTPUT
-          
-          echo "### Fixed" >> $GITHUB_OUTPUT
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%h - %s (%an)" | grep -iE '^[a-f0-9]+ - fix' | sed 's/^[a-f0-9]* - fix: /- /' >> $GITHUB_OUTPUT || true
-          echo "" >> $GITHUB_OUTPUT
-          
-          echo "### Changed" >> $GITHUB_OUTPUT
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%h - %s (%an)" | grep -ivE '^[a-f0-9]+ - (feat|fix|add|new)' | sed 's/^[a-f0-9]* - /- /' >> $GITHUB_OUTPUT || true
-          echo "EOF" >> $GITHUB_OUTPUT
-        else
-          # First release
-          echo "CHANGES<<EOF" >> $GITHUB_OUTPUT
-          echo "Initial Release" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          
-          # Add all commits for initial release
-          echo "### Added" >> $GITHUB_OUTPUT
-          git log --pretty=format:"%h - %s (%an)" | grep -iE '^[a-f0-9]+ - (feat|add|new)' | sed 's/^[a-f0-9]* - feat: /- /' >> $GITHUB_OUTPUT || true
-          echo "" >> $GITHUB_OUTPUT
-          
-          echo "### Fixed" >> $GITHUB_OUTPUT
-          git log --pretty=format:"%h - %s (%an)" | grep -iE '^[a-f0-9]+ - fix' | sed 's/^[a-f0-9]* - fix: /- /' >> $GITHUB_OUTPUT || true
-          echo "" >> $GITHUB_OUTPUT
-          
-          echo "### Changed" >> $GITHUB_OUTPUT
-          git log --pretty=format:"%h - %s (%an)" | grep -ivE '^[a-f0-9]+ - (feat|fix|add|new)' | sed 's/^[a-f0-9]* - /- /' >> $GITHUB_OUTPUT || true
-          echo "EOF" >> $GITHUB_OUTPUT
-        fi
+        echo "CHANGES<<EOF" >> $GITHUB_OUTPUT
+        echo "## FilaMan v2.1.0 - Enhanced Fork" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "This is an enhanced fork of ManuelW77/Filaman with the following key features:" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "### Key Features" >> $GITHUB_OUTPUT
+        echo "- ✅ **Multi-color filament support** with visual color display" >> $GITHUB_OUTPUT
+        echo "- ✅ **ACE Pro NFC tag integration** with hybrid format support" >> $GITHUB_OUTPUT
+        echo "- ✅ **Spoolman API integration** for filament management" >> $GITHUB_OUTPUT
+        echo "- ✅ **Enhanced NFC tag display** with comprehensive data fields" >> $GITHUB_OUTPUT
+        echo "- ✅ **Bambu Lab printer integration** with MQTT support" >> $GITHUB_OUTPUT
+        echo "- ✅ **Weight scale calibration** with auto-tare functionality" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "### Installation" >> $GITHUB_OUTPUT
+        echo "Download the appropriate binary for your needs:" >> $GITHUB_OUTPUT
+        echo "- **filaman_full_2.1.0.bin** - Complete firmware (recommended for first-time installation)" >> $GITHUB_OUTPUT
+        echo "- **upgrade_filaman_firmware_v2.1.0.bin** - Firmware only (for OTA updates)" >> $GITHUB_OUTPUT
+        echo "- **upgrade_filaman_website_v2.1.0.bin** - Web interface only (for UI updates)" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "### Documentation" >> $GITHUB_OUTPUT
+        echo "For detailed setup instructions and feature documentation, please visit the [GitHub repository](https://github.com/Anzarion/Filaman)." >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Create GitHub Release
       env:
@@ -122,64 +114,36 @@ jobs:
       run: |
         VERSION=${{ steps.get_version.outputs.VERSION }}
         cd .pio/build/esp32dev
-        
+
+        # Write release notes to file to avoid shell escaping issues
+        cat > release_notes.txt << 'NOTES_EOF'
+        ${{ steps.release_notes.outputs.CHANGES }}
+        NOTES_EOF
+
         # Create release with available files
         FILES_TO_UPLOAD=""
-        
+
         # Always add firmware
         if [ -f "upgrade_filaman_firmware_v${VERSION}.bin" ]; then
           FILES_TO_UPLOAD="$FILES_TO_UPLOAD upgrade_filaman_firmware_v${VERSION}.bin"
         fi
-        
+
         # Add LittleFS and full binary only if they exist
         if [ -f "upgrade_filaman_website_v${VERSION}.bin" ]; then
           FILES_TO_UPLOAD="$FILES_TO_UPLOAD upgrade_filaman_website_v${VERSION}.bin"
         fi
-        
+
         if [ -f "filaman_full_${VERSION}.bin" ]; then
           FILES_TO_UPLOAD="$FILES_TO_UPLOAD filaman_full_${VERSION}.bin"
         fi
-        
+
         # Create release with available files
         if [ -n "$FILES_TO_UPLOAD" ]; then
           gh release create "v${VERSION}" \
             --title "Release ${VERSION}" \
-            --notes "${{ steps.release_notes.outputs.CHANGES }}" \
+            --notes-file release_notes.txt \
             $FILES_TO_UPLOAD
         else
           echo "Error: No files found to upload"
-          exit 1
-        fi
-
-    - name: Install lftp
-      run: sudo apt-get install -y lftp
-        
-    - name: Upload Firmware via FTP
-      if: success()
-      env:
-        FTP_PASSWORD: ${{ vars.FTP_PASSWORD }}
-        FTP_USER: ${{ vars.FTP_USER }}
-        FTP_HOST: ${{ vars.FTP_HOST }}
-        VERSION: ${{ steps.get_version.outputs.VERSION }}
-      run: |
-        echo "Environment variables:"
-        env | grep -E '^FTP_' | while read -r line; do
-          var_name=$(echo "$line" | cut -d= -f1)
-          var_value=$(echo "$line" | cut -d= -f2-)
-          echo "$var_name is $(if [ -n "$var_value" ]; then echo "set"; else echo "empty"; fi)"
-        done
-        
-        cd .pio/build/esp32dev
-        if [ -n "$FTP_USER" ] && [ -n "$FTP_PASSWORD" ] && [ -n "$FTP_HOST" ]; then
-          echo "All FTP credentials are present, attempting upload..."
-          lftp -c "set ssl:verify-certificate no; \
-                    set ftp:ssl-protect-data true; \
-                    set ftp:ssl-force true; \
-                    set ssl:check-hostname false; \
-                    set ftp:ssl-auth TLS; \
-                    open -u $FTP_USER,$FTP_PASSWORD $FTP_HOST; \
-                    put -O / filaman_full_${VERSION}.bin -o filaman_full.bin"
-        else
-          echo "Error: Some FTP credentials are missing"
           exit 1
         fi
