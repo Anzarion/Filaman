@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilaMan - NFC Filament Manager für ESP32</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .install-cta {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .install-cta h2 {
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .install-cta p {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .install-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .install-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .browser-note {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 0.95em;
+            color: #856404;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .feature {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .feature h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .feature p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .section li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .section li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .hardware {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .hardware h3 {
+            color: #1976D2;
+            margin-bottom: 15px;
+        }
+
+        .hardware ul {
+            list-style: disc;
+            margin-left: 30px;
+        }
+
+        .hardware li:before {
+            content: none;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .github-badge {
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏷️ FilaMan</h1>
+            <p>NFC Filament Manager für ESP32</p>
+        </div>
+
+        <div class="content">
+            <div class="install-cta">
+                <h2>🚀 Jetzt installieren</h2>
+                <p>Installieren Sie FilaMan direkt über Ihren Browser - ohne VSCode oder PlatformIO!</p>
+                <a href="install.html" class="install-button">Zur Browser-Installation →</a>
+                <div class="browser-note">
+                    <strong>Hinweis:</strong> Funktioniert nur mit Chrome oder Edge Browser
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>✨ Features</h2>
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-icon">🎨</div>
+                        <h3>Multi-Color Support</h3>
+                        <p>Visuelle Darstellung von mehrfarbigen Filamenten mit präziser Farbwiedergabe</p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">🏷️</div>
+                        <h3>ACE Pro NFC Tags</h3>
+                        <p>Volle Unterstützung für Bambu Lab ACE Pro NFC-Tags mit Hybrid-Format</p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">📊</div>
+                        <h3>Spoolman Integration</h3>
+                        <p>Nahtlose API-Integration für zentrales Filament-Management</p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">⚖️</div>
+                        <h3>Waagen-Kalibrierung</h3>
+                        <p>Automatische Tara-Funktion und präzise Gewichtsmessung</p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">🖨️</div>
+                        <h3>Bambu Lab MQTT</h3>
+                        <p>Direkte Integration mit Bambu Lab Druckern über MQTT</p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">🔄</div>
+                        <h3>OTA Updates</h3>
+                        <p>Firmware-Updates direkt über die Web-Oberfläche - kein USB nötig</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🔧 Installation & Setup</h2>
+                <ul>
+                    <li><strong>Browser-Installation:</strong> Verwenden Sie unseren <a href="install.html" style="color: #667eea;">Web-Flasher</a> für eine einfache Erstinstallation</li>
+                    <li><strong>WLAN konfigurieren:</strong> Nach dem ersten Start öffnet der ESP32 einen Hotspot "FilaMan-XXXXXX"</li>
+                    <li><strong>Web-Interface:</strong> Zugriff über <code>http://filaman.local</code> in Ihrem Netzwerk</li>
+                    <li><strong>Updates:</strong> Zukünftige Updates erfolgen bequem über die Web-Oberfläche (OTA)</li>
+                </ul>
+
+                <div class="hardware">
+                    <h3>📦 Benötigte Hardware</h3>
+                    <ul>
+                        <li>ESP32 Development Board (z.B. ESP32 DevKitC)</li>
+                        <li>PN532 NFC Reader (I2C oder SPI)</li>
+                        <li>HX711 Wägezelle mit Load Cell (optional für Gewichtsmessung)</li>
+                        <li>USB-Kabel für die Erstinstallation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📚 Über dieses Projekt</h2>
+                <p style="color: #666; line-height: 1.8;">
+                    FilaMan ist ein erweiterter Fork von <a href="https://github.com/ManuelW77/Filaman" style="color: #667eea;">ManuelW77/Filaman</a>
+                    mit zahlreichen Verbesserungen für moderne 3D-Drucker und Filament-Management-Systeme.
+                    Das Projekt ermöglicht das Auslesen, Bearbeiten und Erstellen von NFC-Tags für 3D-Drucker-Filamente,
+                    insbesondere für Bambu Lab Drucker und kompatible Systeme.
+                </p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>
+                <a href="https://github.com/Anzarion/Filaman" target="_blank">📦 GitHub Repository</a>
+                <a href="install.html">🚀 Installieren</a>
+                <a href="https://github.com/Anzarion/Filaman/releases" target="_blank">📥 Downloads</a>
+            </div>
+            <div class="github-badge">
+                <a href="https://github.com/Anzarion/Filaman" target="_blank">
+                    <img src="https://img.shields.io/badge/GitHub-Anzarion%2FFilaman-blue?logo=github" alt="GitHub">
+                </a>
+                <a href="https://github.com/Anzarion/Filaman/releases/latest" target="_blank">
+                    <img src="https://img.shields.io/github/v/release/Anzarion/Filaman" alt="Version">
+                </a>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.9em;">
+                FilaMan v2.1.0 - Enhanced Fork by Anzarion
+            </p>
+        </div>
+    </div>
+</body>
+</html>
