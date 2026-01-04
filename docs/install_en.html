@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -175,30 +175,30 @@
 <body>
     <div class="container">
         <div class="language-switcher">
-            <a href="install.html" class="active">🇩🇪 DE</a>
-            <a href="install_en.html">🇬🇧 EN</a>
+            <a href="install.html">🇩🇪 DE</a>
+            <a href="install_en.html" class="active">🇬🇧 EN</a>
         </div>
 
         <h1>🏷️ FilaMan Installation</h1>
-        <p class="subtitle">NFC Filament Manager für ESP32</p>
+        <p class="subtitle">NFC Filament Manager for ESP32</p>
 
         <div class="browser-warning">
-            <strong>⚠️ Browser-Anforderung:</strong> Diese Installation funktioniert nur mit <strong>Google Chrome</strong> oder <strong>Microsoft Edge</strong>. Safari und Firefox werden nicht unterstützt.
+            <strong>⚠️ Browser Requirement:</strong> This installation only works with <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>. Safari and Firefox are not supported.
         </div>
 
         <div class="info-box">
-            <h3>📋 Voraussetzungen</h3>
+            <h3>📋 Prerequisites</h3>
             <ul>
                 <li>ESP32 Development Board</li>
-                <li>USB-Kabel (Daten-Kabel, kein reines Ladekabel!)</li>
-                <li>Chrome oder Edge Browser</li>
-                <li>Windows: CP210x oder CH340 USB-Treiber (falls nötig)</li>
+                <li>USB Cable (data cable, not charge-only!)</li>
+                <li>Chrome or Edge Browser</li>
+                <li>Windows: CP210x or CH340 USB drivers (if needed)</li>
             </ul>
         </div>
 
         <div class="install-section">
-            <h2>🚀 Installation starten</h2>
-            <p style="margin: 15px 0;">Klicken Sie auf den Button und verbinden Sie Ihren ESP32 per USB.</p>
+            <h2>🚀 Start Installation</h2>
+            <p style="margin: 15px 0;">Click the button and connect your ESP32 via USB.</p>
 
             <esp-web-install-button manifest="manifest.json">
                 <button slot="activate" style="
@@ -213,56 +213,56 @@
                     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
                     transition: all 0.3s;
                 ">
-                    FilaMan installieren
+                    Install FilaMan
                 </button>
                 <span slot="unsupported">
-                    ❌ Ihr Browser wird nicht unterstützt. Bitte verwenden Sie Chrome oder Edge.
+                    ❌ Your browser is not supported. Please use Chrome or Edge.
                 </span>
                 <span slot="not-allowed">
-                    ❌ Diese Seite muss über HTTPS aufgerufen werden.
+                    ❌ This page must be accessed via HTTPS.
                 </span>
             </esp-web-install-button>
         </div>
 
         <div class="steps">
-            <h3>📝 Nach der Installation:</h3>
+            <h3>📝 After Installation:</h3>
 
             <div class="step">
                 <span class="step-number">1</span>
-                <strong>ESP32 neu starten</strong> - Trennen Sie kurz die USB-Verbindung
+                <strong>Restart ESP32</strong> - Briefly disconnect the USB connection
             </div>
 
             <div class="step">
                 <span class="step-number">2</span>
-                <strong>WLAN konfigurieren</strong> - Der ESP32 öffnet einen WiFi-Hotspot "FilaMan-XXXXXX". Verbinden Sie sich damit und öffnen Sie <code>http://192.168.4.1</code>
+                <strong>Configure WiFi</strong> - The ESP32 opens a WiFi hotspot "FilaMan-XXXXXX". Connect to it and open <code>http://192.168.4.1</code>
             </div>
 
             <div class="step">
                 <span class="step-number">3</span>
-                <strong>Web-Interface öffnen</strong> - Nach der WLAN-Konfiguration erreichen Sie FilaMan unter <code>http://filaman.local</code> in Ihrem Netzwerk
+                <strong>Open Web Interface</strong> - After WiFi configuration, access FilaMan at <code>http://filaman.local</code> on your network
             </div>
 
             <div class="step">
                 <span class="step-number">4</span>
-                <strong>NFC-Reader anschließen</strong> - Verbinden Sie den PN532 NFC-Reader und kalibrieren Sie die Waage
+                <strong>Connect NFC Reader</strong> - Connect the PN532 NFC reader and calibrate the scale
             </div>
         </div>
 
         <div class="info-box" style="margin-top: 30px;">
             <h3>🔄 Updates</h3>
             <ul>
-                <li>Zukünftige Updates können direkt über die FilaMan Web-Oberfläche eingespielt werden (OTA)</li>
-                <li>Keine USB-Verbindung mehr nötig für Updates!</li>
+                <li>Future updates can be installed directly through the FilaMan web interface (OTA)</li>
+                <li>No USB connection needed for updates!</li>
             </ul>
         </div>
 
         <div class="footer">
             <p>
                 <a href="https://github.com/Anzarion/Filaman" target="_blank">📦 GitHub Repository</a> |
-                <a href="index.html">🏠 Zurück zur Hauptseite</a>
+                <a href="index_en.html">🏠 Back to Home</a>
             </p>
             <p style="margin-top: 10px; font-size: 0.9em;">
-                FilaMan v2.1.0 - Enhanced Fork von ManuelW77/Filaman
+                FilaMan v2.1.0 - Enhanced Fork of ManuelW77/Filaman
             </p>
         </div>
     </div>

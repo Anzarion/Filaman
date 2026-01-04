@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FilaMan - NFC Filament Manager für ESP32</title>
+    <title>FilaMan - NFC Filament Manager for ESP32</title>
     <style>
         * {
             margin: 0;
@@ -249,22 +249,22 @@
 <body>
     <div class="container">
         <div class="language-switcher">
-            <a href="index.html" class="active">🇩🇪 DE</a>
-            <a href="index_en.html">🇬🇧 EN</a>
+            <a href="index.html">🇩🇪 DE</a>
+            <a href="index_en.html" class="active">🇬🇧 EN</a>
         </div>
 
         <div class="header">
             <h1>🏷️ FilaMan</h1>
-            <p>NFC Filament Manager für ESP32</p>
+            <p>NFC Filament Manager for ESP32</p>
         </div>
 
         <div class="content">
             <div class="install-cta">
-                <h2>🚀 Jetzt installieren</h2>
-                <p>Installieren Sie FilaMan direkt über Ihren Browser - ohne VSCode oder PlatformIO!</p>
-                <a href="install.html" class="install-button">Zur Browser-Installation →</a>
+                <h2>🚀 Install Now</h2>
+                <p>Install FilaMan directly from your browser - no VSCode or PlatformIO required!</p>
+                <a href="install_en.html" class="install-button">Go to Browser Installation →</a>
                 <div class="browser-note">
-                    <strong>Hinweis:</strong> Funktioniert nur mit Chrome oder Edge Browser
+                    <strong>Note:</strong> Only works with Chrome or Edge browser
                 </div>
             </div>
 
@@ -274,37 +274,37 @@
                     <div class="feature">
                         <div class="feature-icon">🎨</div>
                         <h3>Multi-Color Support</h3>
-                        <p>Visuelle Darstellung von mehrfarbigen Filamenten mit präziser Farbwiedergabe</p>
+                        <p>Visual display of multi-color filaments with accurate color representation</p>
                     </div>
 
                     <div class="feature">
                         <div class="feature-icon">🏷️</div>
                         <h3>ACE Pro NFC Tags</h3>
-                        <p>Volle Unterstützung für Bambu Lab ACE Pro NFC-Tags mit Hybrid-Format</p>
+                        <p>Full support for Bambu Lab ACE Pro NFC tags with hybrid format</p>
                     </div>
 
                     <div class="feature">
                         <div class="feature-icon">📊</div>
                         <h3>Spoolman Integration</h3>
-                        <p>Nahtlose API-Integration für zentrales Filament-Management</p>
+                        <p>Seamless API integration for centralized filament management</p>
                     </div>
 
                     <div class="feature">
                         <div class="feature-icon">⚖️</div>
-                        <h3>Waagen-Kalibrierung</h3>
-                        <p>Automatische Tara-Funktion und präzise Gewichtsmessung</p>
+                        <h3>Scale Calibration</h3>
+                        <p>Automatic tare function and precise weight measurement</p>
                     </div>
 
                     <div class="feature">
                         <div class="feature-icon">🖨️</div>
                         <h3>Bambu Lab MQTT</h3>
-                        <p>Direkte Integration mit Bambu Lab Druckern über MQTT</p>
+                        <p>Direct integration with Bambu Lab printers via MQTT</p>
                     </div>
 
                     <div class="feature">
                         <div class="feature-icon">🔄</div>
                         <h3>OTA Updates</h3>
-                        <p>Firmware-Updates direkt über die Web-Oberfläche - kein USB nötig</p>
+                        <p>Firmware updates directly through the web interface - no USB needed</p>
                     </div>
                 </div>
             </div>
@@ -312,30 +312,30 @@
             <div class="section">
                 <h2>🔧 Installation & Setup</h2>
                 <ul>
-                    <li><strong>Browser-Installation:</strong> Verwenden Sie unseren <a href="install.html" style="color: #667eea;">Web-Flasher</a> für eine einfache Erstinstallation</li>
-                    <li><strong>WLAN konfigurieren:</strong> Nach dem ersten Start öffnet der ESP32 einen Hotspot "FilaMan-XXXXXX"</li>
-                    <li><strong>Web-Interface:</strong> Zugriff über <code>http://filaman.local</code> in Ihrem Netzwerk</li>
-                    <li><strong>Updates:</strong> Zukünftige Updates erfolgen bequem über die Web-Oberfläche (OTA)</li>
+                    <li><strong>Browser Installation:</strong> Use our <a href="install_en.html" style="color: #667eea;">Web Flasher</a> for easy initial installation</li>
+                    <li><strong>WiFi Configuration:</strong> After first boot, the ESP32 opens a hotspot "FilaMan-XXXXXX"</li>
+                    <li><strong>Web Interface:</strong> Access via <code>http://filaman.local</code> on your network</li>
+                    <li><strong>Updates:</strong> Future updates are done conveniently through the web interface (OTA)</li>
                 </ul>
 
                 <div class="hardware">
-                    <h3>📦 Benötigte Hardware</h3>
+                    <h3>📦 Required Hardware</h3>
                     <ul>
-                        <li>ESP32 Development Board (z.B. ESP32 DevKitC)</li>
-                        <li>PN532 NFC Reader (I2C oder SPI)</li>
-                        <li>HX711 Wägezelle mit Load Cell (optional für Gewichtsmessung)</li>
-                        <li>USB-Kabel für die Erstinstallation</li>
+                        <li>ESP32 Development Board (e.g. ESP32 DevKitC)</li>
+                        <li>PN532 NFC Reader (I2C or SPI)</li>
+                        <li>HX711 Load Cell with Weight Sensor (optional for weight measurement)</li>
+                        <li>USB Cable for initial installation</li>
                     </ul>
                 </div>
             </div>
 
             <div class="section">
-                <h2>📚 Über dieses Projekt</h2>
+                <h2>📚 About This Project</h2>
                 <p style="color: #666; line-height: 1.8;">
-                    FilaMan ist ein erweiterter Fork von <a href="https://github.com/ManuelW77/Filaman" style="color: #667eea;">ManuelW77/Filaman</a>
-                    mit zahlreichen Verbesserungen für moderne 3D-Drucker und Filament-Management-Systeme.
-                    Das Projekt ermöglicht das Auslesen, Bearbeiten und Erstellen von NFC-Tags für 3D-Drucker-Filamente,
-                    insbesondere für Bambu Lab Drucker und kompatible Systeme.
+                    FilaMan is an enhanced fork of <a href="https://github.com/ManuelW77/Filaman" style="color: #667eea;">ManuelW77/Filaman</a>
+                    with numerous improvements for modern 3D printers and filament management systems.
+                    The project enables reading, editing, and creating NFC tags for 3D printer filaments,
+                    especially for Bambu Lab printers and compatible systems.
                 </p>
             </div>
         </div>
@@ -343,7 +343,7 @@
         <div class="footer">
             <div>
                 <a href="https://github.com/Anzarion/Filaman" target="_blank">📦 GitHub Repository</a>
-                <a href="install.html">🚀 Installieren</a>
+                <a href="install_en.html">🚀 Install</a>
                 <a href="https://github.com/Anzarion/Filaman/releases" target="_blank">📥 Downloads</a>
             </div>
             <div class="github-badge">
