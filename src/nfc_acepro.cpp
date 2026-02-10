@@ -653,6 +653,16 @@ void writeNfcTagBinaryTask(void* param) {
         return;
     }
     
+    // Convert UID to hex string for Spoolman tracking
+    String uidString = "";
+    for (uint8_t i = 0; i < uidLength; i++) {
+        uidString += String(uid[i], HEX);
+        if (i < uidLength - 1) {
+            uidString += ":";
+        }
+    }
+    Serial.printf("[ACEPro] Tag UID: %s\n", uidString.c_str());
+
     Serial.println("[ACEPro] Tag detected, starting write sequence...");
     
     // **CRITICAL**: Detect tag type BEFORE clearing to avoid false detection
@@ -903,6 +913,10 @@ void writeNfcTagBinaryTask(void* param) {
         Serial.println("[ACEPro] ✓ NDEF format (Pages 40+): READY");
         Serial.println("[ACEPro] ✓ Tag is now DUAL-FORMAT COMPATIBLE!");
         nfcReaderState = NFC_WRITE_SUCCESS;
+
+        // Update Spoolman with physical NFC tag ID
+        String smIdPayload = "{\"sm_id\":\"" + String(spoolId) + "\"}";
+        updateSpoolTagId(uidString, smIdPayload.c_str());
     } else {
         Serial.println("[ACEPro] ✗ Tag write FAILED");
         nfcReaderState = NFC_WRITE_ERROR;

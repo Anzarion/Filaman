@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1] - 2026-02-10
+### Fixed
+- Fix ACE Pro binary write not saving unique NFC tag ID to Spoolman
+  - Physical NFC UID is now converted to hex string after tag detection
+  - `updateSpoolTagId()` is called after successful write to store `nfc_id` in Spoolman
+  - Matches behavior of JSON write path for consistent tag tracking
+
 ## [2.1.0] - 2026-01-01
 ### Added
 - Pause Bambu MQTT task during ACE Pro binary NFC write

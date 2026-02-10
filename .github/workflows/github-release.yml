@@ -85,24 +85,21 @@ jobs:
     - name: Generate Release Notes
       id: release_notes
       run: |
+        VERSION=$(grep '^version = ' platformio.ini | cut -d'"' -f2)
         echo "CHANGES<<EOF" >> $GITHUB_OUTPUT
-        echo "## FilaMan v2.1.0 - Enhanced Fork" >> $GITHUB_OUTPUT
+        echo "## FilaMan v${VERSION} - Bugfix Release" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
-        echo "This is an enhanced fork of ManuelW77/Filaman with the following key features:" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "### Key Features" >> $GITHUB_OUTPUT
-        echo "- ✅ **Multi-color filament support** with visual color display" >> $GITHUB_OUTPUT
-        echo "- ✅ **ACE Pro NFC tag integration** with hybrid format support" >> $GITHUB_OUTPUT
-        echo "- ✅ **Spoolman API integration** for filament management" >> $GITHUB_OUTPUT
-        echo "- ✅ **Enhanced NFC tag display** with comprehensive data fields" >> $GITHUB_OUTPUT
-        echo "- ✅ **Bambu Lab printer integration** with MQTT support" >> $GITHUB_OUTPUT
-        echo "- ✅ **Weight scale calibration** with auto-tare functionality" >> $GITHUB_OUTPUT
+        echo "### Fixed" >> $GITHUB_OUTPUT
+        echo "- Fix ACE Pro binary write not saving unique NFC tag ID to Spoolman" >> $GITHUB_OUTPUT
+        echo "  - Physical NFC UID is now converted to hex string after tag detection" >> $GITHUB_OUTPUT
+        echo "  - \`updateSpoolTagId()\` is called after successful write to store \`nfc_id\` in Spoolman" >> $GITHUB_OUTPUT
+        echo "  - Matches behavior of JSON write path for consistent tag tracking" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         echo "### Installation" >> $GITHUB_OUTPUT
         echo "Download the appropriate binary for your needs:" >> $GITHUB_OUTPUT
-        echo "- **filaman_full_2.1.0.bin** - Complete firmware (recommended for first-time installation)" >> $GITHUB_OUTPUT
-        echo "- **upgrade_filaman_firmware_v2.1.0.bin** - Firmware only (for OTA updates)" >> $GITHUB_OUTPUT
-        echo "- **upgrade_filaman_website_v2.1.0.bin** - Web interface only (for UI updates)" >> $GITHUB_OUTPUT
+        echo "- **filaman_full_${VERSION}.bin** - Complete firmware (recommended for first-time installation)" >> $GITHUB_OUTPUT
+        echo "- **upgrade_filaman_firmware_v${VERSION}.bin** - Firmware only (for OTA updates)" >> $GITHUB_OUTPUT
+        echo "- **upgrade_filaman_website_v${VERSION}.bin** - Web interface only (for UI updates)" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         echo "### Documentation" >> $GITHUB_OUTPUT
         echo "For detailed setup instructions and feature documentation, please visit the [GitHub repository](https://github.com/Anzarion/Filaman)." >> $GITHUB_OUTPUT
