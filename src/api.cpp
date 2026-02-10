@@ -46,8 +46,9 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
     Serial.println(spoolsUrl);
 
     http.begin(spoolsUrl);
+    http.setTimeout(10000);
     int httpCode = http.GET();
-    
+
     Serial.printf("[API] HTTP Response Code: %d\n", httpCode);
 
     JsonDocument filteredDoc;
@@ -245,10 +246,17 @@ JsonDocument fetchSingleSpoolInfo(int spoolId) {
 void sendToApi(void *parameter) {
     HEAP_DEBUG_MESSAGE("sendToApi begin");
 
-    // Wait until API is IDLE
+    // Wait until API is IDLE, with timeout
+    uint16_t waitCount = 0;
+    const uint16_t maxWaitCount = 300; // 30 seconds (300 x 100ms)
     while(spoolmanApiState != API_IDLE){
         vTaskDelay(100 / portTICK_PERIOD_MS);
         yield();
+        waitCount++;
+        if (waitCount >= maxWaitCount) {
+            Serial.println("WARNING: API state stuck at TRANSMITTING, forcing reset to IDLE");
+            break;
+        }
     }
     spoolmanApiState = API_TRANSMITTING;
     SendToApiParams* params = (SendToApiParams*)parameter;
@@ -599,6 +607,12 @@ bool updateSpoolTagId(String uidString, const char* payload) {
         0,                        // Priorität
         apiTask                   // Task-Handle (nicht benötigt)
     );
+    if (result != pdPASS) {
+        Serial.println("Failed to create extra fields API task!");
+        delete params;
+        updateDoc.clear();
+        return false;
+    }
 
     updateDoc.clear();
 
@@ -741,6 +755,12 @@ uint8_t updateSpoolWeight(String spoolId, uint16_t weight) {
         0,                        // Priorität
         apiTask                      // Task-Handle (nicht benötigt)
     );
+    if (result != pdPASS) {
+        Serial.println("Failed to create weight update API task!");
+        delete params;
+        updateDoc.clear();
+        return 0;
+    }
 
     updateDoc.clear();
     HEAP_DEBUG_MESSAGE("updateSpoolWeight end");
@@ -787,8 +807,15 @@ uint8_t updateSpoolLocation(String spoolId, String location){
             0,                        // Priorität
             apiTask                   // Task-Handle
         );
+        if (result != pdPASS) {
+            Serial.println("Failed to create location update API task!");
+            delete params;
+            updateDoc.clear();
+            return 0;
+        }
     }else{
         Serial.println("Not spawning new task, API still active!");
+        delete params;
     }
 
     updateDoc.clear();
@@ -833,6 +860,12 @@ bool updateSpoolOcto(int spoolId) {
         0,                        // Priorität
         apiTask                      // Task-Handle (nicht benötigt)
     );
+    if (result != pdPASS) {
+        Serial.println("Failed to create OctoPrint API task!");
+        delete params;
+        updateDoc.clear();
+        return false;
+    }
 
     updateDoc.clear();
 
@@ -886,6 +919,11 @@ bool updateSpoolBambuData(String payload) {
         0,                        // Priorität
         apiTask                      // Task-Handle (nicht benötigt)
     );
+    if (result != pdPASS) {
+        Serial.println("Failed to create Bambu update API task!");
+        delete params;
+        return false;
+    }
 
     return true;
 }
@@ -1009,7 +1047,12 @@ uint16_t checkVendor(const JsonDocument& payload) {
         0,                        // Priorität
         NULL                      // Task-Handle (nicht benötigt)
     );
-    
+    if (result != pdPASS) {
+        Serial.println("Failed to create vendor check API task!");
+        delete params;
+        return 0;
+    }
+
     // Wait until foundVendorId is updated by the API response (not 65535 anymore)
     while (foundVendorId == 65535)
     {
@@ -1146,7 +1189,7 @@ uint16_t checkFilament(uint16_t vendorId, const JsonDocument& payload) {
     params->spoolsUrl = spoolsUrl;
     params->updatePayload = ""; // Empty for GET request
 
-     // Erstelle die Task
+    // Erstelle die Task
     BaseType_t result = xTaskCreate(
         sendToApi,                // Task-Funktion
         "SendToApiTask",          // Task-Name
@@ -1155,7 +1198,12 @@ uint16_t checkFilament(uint16_t vendorId, const JsonDocument& payload) {
         0,                        // Priorität
         NULL                      // Task-Handle (nicht benötigt)
     );
-    
+    if (result != pdPASS) {
+        Serial.println("Failed to create filament check API task!");
+        delete params;
+        return 0;
+    }
+
     // Wait until foundFilamentId is updated by the API response (not 65535 anymore)
     while (foundFilamentId == 65535) {
         vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -1389,6 +1437,7 @@ bool checkSpoolmanExtraFields() {
             Serial.println();
             Serial.println("-------- Prüfe Felder für "+checkUrls[i]+" --------");
             http.begin(checkUrls[i]);
+            http.setTimeout(10000);
             int httpCode = http.GET();
         
             if (httpCode == HTTP_CODE_OK) {
@@ -1476,6 +1525,7 @@ bool checkSpoolmanInstance() {
         Serial.println(healthUrl);
 
         http.begin(healthUrl);
+        http.setTimeout(10000);
         int httpCode = http.GET();
 
         if (httpCode > 0) {
@@ -1493,7 +1543,8 @@ bool checkSpoolmanInstance() {
                         // TBD
                         oledShowMessage("Spoolman Error creating Extrafields");
                         vTaskDelay(2000 / portTICK_PERIOD_MS);
-                        
+
+                        spoolmanApiState = API_IDLE;
                         return false;
                     }
 
